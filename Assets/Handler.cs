@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Video;
@@ -28,42 +30,68 @@ public class Handler : MonoBehaviour
 
     void FixedUpdate()
     {
+        int dim = cc.dim;
         if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
-        onOffArr = new bool[CubeContainer.dim * CubeContainer.dim];
+        onOffArr = new bool[dim * dim];
         int onCount = 0;
         Debug.Log($"what is currFrame {currFrame}, framesToLookAhead {framesToLoadAhead}, and framesLoaded {framesLoaded}?");
         var jpeg = jpegs[currFrame + framesToLoadAhead - framesLoaded];
         var pixels = jpeg.GetPixels32();
         int textureSize = 1024;
-        int samplingInterval = textureSize / CubeContainer.dim;
-        for (int j = 0; j < CubeContainer.dim; j++)
+        int samplingInterval = textureSize / dim;
+
+
+        var onOffArrNative = new NativeArray<bool>(onOffArr, Allocator.TempJob);
+        var pixelsNative = new NativeArray<Color32>(pixels, Allocator.TempJob);
+
+        var job = new PixelReadJob()
         {
-            for (int k = 0; k < CubeContainer.dim; k++)
-            {
-                int originalX = k * samplingInterval;
-                int originalY = j * samplingInterval;
-                
-                if (pixels[originalY * textureSize + originalX].r < 0.5)
-                {
-                    onOffArr[j * CubeContainer.dim + k] = false;
-                }
-                else
-                {
-                    onCount++;
-                    onOffArr[j * CubeContainer.dim + k] = true;
-                }
-            }
-        }
+            Pixels = pixelsNative,
+            OnOffArr = onOffArrNative,
+            SamplingInterval = samplingInterval,
+            Dim = dim,
+            TextureSize = textureSize
+        };
+
+        JobHandle jobHandle = job.Schedule(onOffArr.Length, 32);
+        jobHandle.Complete();
+        
         currFrame++;
-        cc.GenerateCubeInfo(onOffArr,onCount);
+        // we used to save how many needed were on in total, which is useful - think about how to get it back
+        cc.GenerateCubeInfo(onOffArrNative,onCount);
+        
+        pixelsNative.Dispose();
     }
+
+    public struct PixelReadJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<Color32> Pixels;
+        public NativeArray<bool> OnOffArr;
+        public int SamplingInterval;
+        public int Dim;
+        public int TextureSize;
+    
+        public void Execute(int index)
+        {
+            int j = index / Dim; // row
+            int k = index % Dim; // column
+        
+            int originalX = k * SamplingInterval;
+            int originalY = j * SamplingInterval;
+        
+            if (Pixels[originalY * TextureSize + originalX].r < 128)
+                OnOffArr[index] = false;
+            else
+                OnOffArr[index] = true;
+        }
+    }
+
 
     private void DynamicFrameLoad()
     {
         string basePath = "frames/out-";
         jpegs = new Texture2D[framesToLoadAhead];
         int frameToLoad = currFrame+1;
-        Debug.Log($"now goinna load another {framesToLoadAhead} frames in dynamicframeload()!");
         for (int i = 0; i < framesToLoadAhead; i++)
         {
             string nextPath = String.Concat(basePath, frameToLoad.ToString("D3"));

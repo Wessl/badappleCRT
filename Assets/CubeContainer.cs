@@ -10,12 +10,12 @@ using Random = UnityEngine.Random;
 
 public class CubeContainer : MonoBehaviour
 {
-    public static int dim = 128;
+    public int dim = 512;
     [SerializeField] private Mesh cubeMesh;
     private Material matBlack;
     private Material matWhite;
-    private Vector3[] blackPos = new Vector3[dim*dim];
-    private Vector3[] whitePos = new Vector3[dim*dim];
+    private Vector3[] blackPos;
+    private Vector3[] whitePos;
     private RenderParams whiteRP;
     private RenderParams blackRP;
     private ComputeBuffer _posBufferWhite;
@@ -36,13 +36,15 @@ public class CubeContainer : MonoBehaviour
         var strideVec3 = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Vector3));
         _posBufferWhite = new ComputeBuffer (dim*dim, strideVec3, ComputeBufferType.Default);
         _posBufferBlack = new ComputeBuffer (dim*dim, strideVec3, ComputeBufferType.Default);
+        blackPos = new Vector3[dim*dim];
+        whitePos = new Vector3[dim*dim];
         
     }
 
-    public void GenerateCubeInfo(bool[] onOffArr, int onCount)
+    public void GenerateCubeInfo(NativeArray<bool> onOffArrNative, int onCount)
     {
         int totalCubes = dim * dim;
-        var onOffArrNative = new NativeArray<bool>(onOffArr, Allocator.TempJob);
+        //var onOffArrNative = new NativeArray<bool>(onOffArr, Allocator.TempJob);
         var blackPosNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
         var whitePosNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
 
