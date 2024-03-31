@@ -10,7 +10,7 @@ using Random = UnityEngine.Random;
 
 public class CubeContainer : MonoBehaviour
 {
-    public static int dim = 512;
+    public static int dim = 128;
     [SerializeField] private Mesh cubeMesh;
     private Material matBlack;
     private Material matWhite;
