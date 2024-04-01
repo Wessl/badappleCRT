@@ -15,7 +15,7 @@ public class Handler : MonoBehaviour
 
     private int currFrame;
     public bool dynamicallyLoadFrames = true;
-    private int framesToLoadAhead = 10;
+    public int framesToLoadAhead = 10;
     private int framesLoaded = 0;
     private bool[] onOffArr;
 
@@ -53,7 +53,7 @@ public class Handler : MonoBehaviour
             TextureSize = textureSize
         };
 
-        JobHandle jobHandle = job.Schedule(onOffArr.Length, 32);
+        JobHandle jobHandle = job.Schedule(onOffArr.Length, 16);
         jobHandle.Complete();
         
         currFrame++;
@@ -99,7 +99,12 @@ public class Handler : MonoBehaviour
             frameToLoad++;
             framesLoaded++;
         }
-        
+        // Is there some way to EFFICIENTLY unload the previously loaded assets?
+    }
+
+    private void OnDestroy()
+    {
+        Resources.UnloadUnusedAssets();
     }
 
     void PreHandle()

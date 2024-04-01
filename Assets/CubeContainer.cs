@@ -23,6 +23,7 @@ public class CubeContainer : MonoBehaviour
     private static readonly int Posbuffer = Shader.PropertyToID("posbuffer");
     private static readonly int Camerapos = Shader.PropertyToID("camerapos");
     private int numInstances;
+    private int StrideVec3;
     [SerializeField] private Shader drawMeshShader;
 
     private void Awake()
@@ -33,11 +34,9 @@ public class CubeContainer : MonoBehaviour
         matBlack.enableInstancing = true;
         matWhite.color = Color.white;
         matWhite.color = Color.black;
-        var strideVec3 = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Vector3));
-        _posBufferWhite = new ComputeBuffer (dim*dim, strideVec3, ComputeBufferType.Default);
-        _posBufferBlack = new ComputeBuffer (dim*dim, strideVec3, ComputeBufferType.Default);
-        blackPos = new Vector3[dim*dim];
-        whitePos = new Vector3[dim*dim];
+        StrideVec3 = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Vector3));
+        
+        
         
     }
 
@@ -47,6 +46,12 @@ public class CubeContainer : MonoBehaviour
         //var onOffArrNative = new NativeArray<bool>(onOffArr, Allocator.TempJob);
         var blackPosNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
         var whitePosNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
+        blackPos = new Vector3[dim*dim];
+        whitePos = new Vector3[dim*dim];
+        _posBufferWhite?.Release();
+        _posBufferBlack?.Release();
+        _posBufferWhite = new ComputeBuffer (dim*dim, StrideVec3, ComputeBufferType.Default);
+        _posBufferBlack = new ComputeBuffer (dim*dim, StrideVec3, ComputeBufferType.Default);
 
         var job = new GenerateCubeInfoJob()
         {
@@ -57,7 +62,7 @@ public class CubeContainer : MonoBehaviour
         };
         
         // Schedule the job with one execution per element in onOffArr
-        JobHandle handle = job.Schedule(onOffArrNative.Length, 64); 
+        JobHandle handle = job.Schedule(onOffArrNative.Length, 16 ); 
         handle.Complete();
         
         whitePosNative.CopyTo(whitePos);
@@ -147,9 +152,7 @@ public class CubeContainer : MonoBehaviour
     
     void OnDestroy()
     {
-        if (_posBufferBlack != null)
-            _posBufferBlack.Release();
-        if (_posBufferWhite != null)
-            _posBufferWhite.Release();
+        _posBufferBlack?.Release();
+        _posBufferWhite?.Release();
     }
 }
