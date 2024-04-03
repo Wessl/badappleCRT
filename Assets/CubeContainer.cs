@@ -62,7 +62,7 @@ public class CubeContainer : MonoBehaviour
         };
         
         // Schedule the job with one execution per element in onOffArr
-        JobHandle handle = job.Schedule(onOffArrNative.Length, 16 ); 
+        JobHandle handle = job.Schedule(onOffArrNative.Length, 64 ); 
         handle.Complete();
         
         whitePosNative.CopyTo(whitePos);
@@ -72,34 +72,6 @@ public class CubeContainer : MonoBehaviour
         onOffArrNative.Dispose();
         blackPosNative.Dispose();
         whitePosNative.Dispose();
-
-        /*
-        int blackTotal = dim * dim - onCount;
-        int whiteTotal = onCount;
-        blackPos = new Vector3[dim * dim];
-        whitePos = new Vector3[dim*dim];
-
-        int arrIndexBlack = 0;
-        int arrIndexWhite = 0;
-
-        int y = 0;
-        for (int i = 0; i < onOffArr.Length; i++)
-        {
-            if (i % dim == 0 && i != 0) // Increment y when a new row starts, but not at the first element
-            {
-                y++;
-            }
-            Vector3 position = new Vector3(i % dim, y, 0); // Calculate position once per iteration
-            if (!onOffArr[i])
-            {
-                blackPos[arrIndexBlack++] = position;// + new Vector3(0,-y/10f,blackTotal/1000f + y/1.5f);
-            }
-            else
-            {
-                whitePos[arrIndexWhite++] = position;// + new Vector3(0, y/10f, -whiteTotal/1000f + y/1.4f);
-            }
-        }
-        */
     }
 
     [BurstCompile]

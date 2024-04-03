@@ -30,11 +30,11 @@ public class Handler : MonoBehaviour
 
     void FixedUpdate()
     {
-        int dim = cc.dim;
         if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
+        int dim = cc.dim;
         onOffArr = new bool[dim * dim];
         int onCount = 0;
-        Debug.Log($"what is currFrame {currFrame}, framesToLookAhead {framesToLoadAhead}, and framesLoaded {framesLoaded}?");
+        // Debug.Log($"what is currFrame {currFrame}, framesToLookAhead {framesToLoadAhead}, and framesLoaded {framesLoaded}?");
         var jpeg = jpegs[currFrame + framesToLoadAhead - framesLoaded];
         var pixels = jpeg.GetPixels32();
         int textureSize = 1024;
@@ -53,7 +53,7 @@ public class Handler : MonoBehaviour
             TextureSize = textureSize
         };
 
-        JobHandle jobHandle = job.Schedule(onOffArr.Length, 16);
+        JobHandle jobHandle = job.Schedule(onOffArr.Length, 64);
         jobHandle.Complete();
         
         currFrame++;
@@ -99,6 +99,8 @@ public class Handler : MonoBehaviour
             frameToLoad++;
             framesLoaded++;
         }
+
+        cc.dim++;
         // Is there some way to EFFICIENTLY unload the previously loaded assets?
     }
 

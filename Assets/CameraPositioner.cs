@@ -12,7 +12,7 @@ public class CameraPositioner : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         var gridSize = cc.dim;
         var viewAngle = GetComponent<Camera>().fieldOfView;
