@@ -39,12 +39,12 @@ public class CubeContainer : MonoBehaviour
         // There is a lot of copying around data - do we really need to copy it over to a float array before setting the data? 
         int totalCubes = dim * dim;
         var positionsNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
-        _positions = new Vector3[dim * dim];
-        _modifiedPixels = new float[dim * dim];
+        if (_positions?.Length != totalCubes)_positions = new Vector3[totalCubes];
+        if (_modifiedPixels?.Length != totalCubes) _modifiedPixels = new float[totalCubes];
         _posBuffer?.Release();
         _colorBuffer?.Release();
-        _posBuffer = new ComputeBuffer (dim * dim, StrideVec3, ComputeBufferType.Default);
-        _colorBuffer = new ComputeBuffer(dim * dim, StrideFloat, ComputeBufferType.Default);
+        _posBuffer = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default);
+        _colorBuffer = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default);
         modifiedPixels.CopyTo(_modifiedPixels);
         var job = new GenerateCubeInfoJob()
         {

@@ -26,12 +26,12 @@ public class Handler : MonoBehaviour
     void Start()
     {
         currFrame = 0;
-        if (dynamicallyLoadFrames) StartCoroutine(DynamicFrameLoad());
+        if (dynamicallyLoadFrames) DynamicFrameLoad();
     }
 
     void FixedUpdate()
     {
-        if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) StartCoroutine(DynamicFrameLoad());
+        if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
         int dim = cc.dim;
        
         var jpeg = _jpegs[currFrame + framesToLoadAhead - framesLoaded];
@@ -81,7 +81,7 @@ public class Handler : MonoBehaviour
     }
 
 
-    IEnumerator DynamicFrameLoad()
+    private void DynamicFrameLoad()
     {
         // Unload previous assets
         foreach (var oldJpeg in _jpegs)
@@ -101,7 +101,6 @@ public class Handler : MonoBehaviour
             framesLoaded++;
         }
         cc.dim++;
-        yield return null;
     }
 
     private void OnDestroy()
