@@ -11,29 +11,24 @@ using Random = UnityEngine.Random;
 public class CubeContainer : MonoBehaviour
 {
     public int dim = 512;
-    [SerializeField] private Mesh cubeMesh;
-    private Material matBlack;
-    private Material matWhite;
-    private Vector3[] whitePos;
-    private RenderParams whiteRP;
-    private RenderParams blackRP;
+    private Material _mat;
+    private Vector3[] _positions;
     private ComputeBuffer _posBuffer;
     private ComputeBuffer _colorBuffer;
     private static readonly int Posbuffer = Shader.PropertyToID("posbuffer");
     private static readonly int Camerapos = Shader.PropertyToID("camerapos");
-    private int numInstances;
     private int StrideVec3;
     private int StrideFloat;
     private float[] _modifiedPixels;
+    
     [SerializeField] private Shader drawMeshShader;
+    [SerializeField] private Mesh cubeMesh;
+
 
     private void Awake()
     {
-        matBlack = new Material(drawMeshShader);
-        matWhite = new Material(drawMeshShader);
-        matWhite.enableInstancing = true;
-        matBlack.enableInstancing = true;
-        matWhite.color = Color.white;
+        _mat = new Material(drawMeshShader);
+        _mat.enableInstancing = true;
         StrideVec3 = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Vector3));
         StrideFloat = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
     }
@@ -41,44 +36,43 @@ public class CubeContainer : MonoBehaviour
     public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels)
     {
         // Also clean up your code convetions with variable names...
-        // Figure out how to do this by just passing in colors straight from the pixels. For some reason the way I did it before did not work. 
+        // There is a lot of copying around data - do we really need to copy it over to a float array before setting the data? 
         int totalCubes = dim * dim;
-        //var onOffArrNative = new NativeArray<bool>(onOffArr, Allocator.TempJob);
-        var whitePosNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
-        whitePos = new Vector3[dim*dim];
+        var positionsNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
+        _positions = new Vector3[dim * dim];
         _modifiedPixels = new float[dim * dim];
         _posBuffer?.Release();
         _colorBuffer?.Release();
-        _posBuffer = new ComputeBuffer (dim*dim, StrideVec3, ComputeBufferType.Default);
+        _posBuffer = new ComputeBuffer (dim * dim, StrideVec3, ComputeBufferType.Default);
         _colorBuffer = new ComputeBuffer(dim * dim, StrideFloat, ComputeBufferType.Default);
         modifiedPixels.CopyTo(_modifiedPixels);
         var job = new GenerateCubeInfoJob()
         {
-            WhitePos = whitePosNative,
+            Positions = positionsNative,
             Dim = dim
         };
         
-        // Schedule the job with one execution per element in onOffArr
-        JobHandle handle = job.Schedule(modifiedPixels.Length, 64 ); 
+        JobHandle handle = job.Schedule(modifiedPixels.Length, 16 ); 
         handle.Complete();
         
-        whitePosNative.CopyTo(whitePos);
+        positionsNative.CopyTo(_positions);
         
         //Dispose - we don't appreciate memory leakers 'round these parts...
-        whitePosNative.Dispose();
+        positionsNative.Dispose();
+        modifiedPixels.Dispose();
     }
 
     [BurstCompile]
     public struct GenerateCubeInfoJob : IJobParallelFor
     {
-        public NativeArray<Vector3> WhitePos;
+        public NativeArray<Vector3> Positions;
         public int Dim;
 
         public void Execute(int i)
         {
             int y = i / Dim;
             Vector3 position = new Vector3(i % Dim, y, 0);
-            WhitePos[i] = position;
+            Positions[i] = position;
         }
     }
 
@@ -88,20 +82,14 @@ public class CubeContainer : MonoBehaviour
     }
     public void Render()
     {
-        _posBuffer.SetData(whitePos);
+        _posBuffer.SetData(_positions);
         _colorBuffer.SetData(_modifiedPixels);
-        matWhite.SetBuffer("_InstancePosition", _posBuffer);
-        matWhite.SetBuffer("_InstanceColor", _colorBuffer);
-        //matBlack.SetBuffer("_InstancePosition", _posBufferBlack);
-        //matBlack.SetFloat("col", 0);
-        matWhite.SetFloat("col", 1);
+        _mat.SetBuffer("_InstancePosition", _posBuffer);
+        _mat.SetBuffer("_InstanceColor", _colorBuffer);
         
         var bounds = new Bounds(Camera.main.transform.position, Vector3.one * 2000f);
-        int whitePixels = whitePos.Length;
-        if (whitePixels > 0)
-        {
-            Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, matWhite, bounds, whitePixels, null, ShadowCastingMode.Off, false);
-        }
+        int cubesToDraw = _positions.Length;
+        Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, _mat, bounds, cubesToDraw, null, ShadowCastingMode.Off, false);
     }
     
     void OnDestroy()

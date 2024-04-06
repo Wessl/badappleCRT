@@ -11,9 +11,9 @@ public class CameraPositioner : MonoBehaviour
         cc = FindObjectOfType<CubeContainer>();
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
+        // uses... MATH to find the correct POSITION? NO WAY!
         var gridSize = cc.dim;
         var viewAngle = GetComponent<Camera>().fieldOfView;
         var distanceAwayFromGrid = cc.dim / Mathf.Tan(Mathf.Deg2Rad * viewAngle);

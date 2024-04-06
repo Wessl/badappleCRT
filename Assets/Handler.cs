@@ -5,13 +5,14 @@ using Unity.Collections;
 using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Video;
 using UnityEngine.Windows;
 
 public class Handler : MonoBehaviour
 {
     private string pathToJpegs;
-    public Texture2D[] jpegs;
+    public Texture2D[] _jpegs;
 
     private int currFrame;
     public bool dynamicallyLoadFrames = true;
@@ -25,49 +26,43 @@ public class Handler : MonoBehaviour
     void Start()
     {
         currFrame = 0;
-        
-        if (dynamicallyLoadFrames) DynamicFrameLoad();
+        if (dynamicallyLoadFrames) StartCoroutine(DynamicFrameLoad());
     }
 
     void FixedUpdate()
     {
-        if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
+        if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) StartCoroutine(DynamicFrameLoad());
         int dim = cc.dim;
-        modifiedPixels = new float[dim * dim];
-        // Debug.Log($"what is currFrame {currFrame}, framesToLookAhead {framesToLoadAhead}, and framesLoaded {framesLoaded}?");
-        var jpeg = jpegs[currFrame + framesToLoadAhead - framesLoaded];
+       
+        var jpeg = _jpegs[currFrame + framesToLoadAhead - framesLoaded];
         var pixels = jpeg.GetRawTextureData();
         Vector2Int textureSize = new Vector2Int(2048, 1536);
         
-
-
-        var modifiedPixelsNative = new NativeArray<float>(modifiedPixels, Allocator.TempJob);
+        var modifiedPixelsNative = new NativeArray<float>(dim*dim, Allocator.TempJob);
         var pixelsNative = new NativeArray<byte>(pixels, Allocator.TempJob);
 
         var job = new SampleImageJob()
         {
             Pixels = pixelsNative,
-            ModifiedArr = modifiedPixelsNative,
+            ModifiedPixels = modifiedPixelsNative,
             Dim = dim,
             TextureSize = textureSize
         };
 
-        JobHandle jobHandle = job.Schedule(modifiedPixels.Length, 64);
+        JobHandle jobHandle = job.Schedule(dim*dim, 64);
         jobHandle.Complete();
         
         currFrame++;
-        // we used to save how many needed were on in total, which is useful - think about how to get it back
         cc.GenerateCubeInfo(modifiedPixelsNative, pixels);
-        
         pixelsNative.Dispose();
     }
     
     public struct SampleImageJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<byte> Pixels;
-        public NativeArray<float> ModifiedArr;
-        public int Dim;
-        public Vector2Int TextureSize;
+        [ReadOnly]public int Dim;
+        [ReadOnly]public Vector2Int TextureSize;
+        public NativeArray<float> ModifiedPixels;
     
         public void Execute(int index)
         {
@@ -81,26 +76,32 @@ public class Handler : MonoBehaviour
             int originalY = (int)(row * scaleHeight);
 
             // Correct indexing for accessing a pixel in a linear array
-            ModifiedArr[index] = Pixels[originalY * TextureSize.x + originalX];
+            ModifiedPixels[index] = Pixels[originalY * TextureSize.x + originalX];
         }
     }
 
 
-    private void DynamicFrameLoad()
+    IEnumerator DynamicFrameLoad()
     {
+        // Unload previous assets
+        foreach (var oldJpeg in _jpegs)
+        {
+            Resources.UnloadAsset(oldJpeg);
+        }
+        
+        // Load future assets
         string basePath = "frames/out-";
-        jpegs = new Texture2D[framesToLoadAhead];
+        _jpegs = new Texture2D[framesToLoadAhead];
         int frameToLoad = currFrame+1;
         for (int i = 0; i < framesToLoadAhead; i++)
         {
             string nextPath = String.Concat(basePath, frameToLoad.ToString("D3"));
-            jpegs[i] = Resources.Load<Texture2D>(nextPath);
+            _jpegs[i] = Resources.Load<Texture2D>(nextPath);
             frameToLoad++;
             framesLoaded++;
         }
-
         cc.dim++;
-        // Is there some way to EFFICIENTLY unload the previously loaded assets?
+        yield return null;
     }
 
     private void OnDestroy()
@@ -110,9 +111,9 @@ public class Handler : MonoBehaviour
 
     void PreHandle()
     {
-        for (int i = 0; i < jpegs.Length; i++)
+        for (int i = 0; i < _jpegs.Length; i++)
         {
-            TextureImporter importer = (TextureImporter)TextureImporter.GetAtPath( AssetDatabase.GetAssetPath(jpegs[i]) );
+            TextureImporter importer = (TextureImporter)TextureImporter.GetAtPath( AssetDatabase.GetAssetPath(_jpegs[i]) );
  
             importer.isReadable = true;
             importer.textureType = TextureImporterType.Default;

@@ -153,9 +153,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03c7666125c330f458158e938d85a2fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  jpegs: []
+  _jpegs: []
   dynamicallyLoadFrames: 1
-  framesToLoadAhead: 10
+  framesToLoadAhead: 4
   cc: {fileID: 90319167}
 --- !u!114 &90319167
 MonoBehaviour:
@@ -170,8 +170,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dim: 1
-  cubeMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   drawMeshShader: {fileID: 4800000, guid: 26c90761b7c3ecc47a5573c6585d0b4d, type: 3}
+  cubeMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!4 &90319168
 Transform:
   m_ObjectHideFlags: 0

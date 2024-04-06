@@ -33,7 +33,6 @@ Shader "Custom/InstancedCubes"
 
             StructuredBuffer<float3> _InstancePosition;
             StructuredBuffer<float4> _InstanceColor;
-            float col;
 
             v2f vert (uint id : SV_InstanceID, appdata v)
             {
@@ -53,6 +52,7 @@ Shader "Custom/InstancedCubes"
 
             fixed4 frag (v2f i) : SV_Target
             {
+                // you could do something cool with the color here... just saying.
                 return i.color;
             }
             ENDCG
