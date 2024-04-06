@@ -12,6 +12,7 @@ Shader "Custom/InstancedCubes"
         Pass
         {
             CGPROGRAM
+
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
@@ -27,9 +28,11 @@ Shader "Custom/InstancedCubes"
                 float3 normal : NORMAL;
                 float4 vertex : SV_POSITION;
                 float3 worldPos : TEXCOORD0;
+                float4 color : COLOR0;
             };
 
             StructuredBuffer<float3> _InstancePosition;
+            StructuredBuffer<float4> _InstanceColor;
             float col;
 
             v2f vert (uint id : SV_InstanceID, appdata v)
@@ -40,6 +43,7 @@ Shader "Custom/InstancedCubes"
                 o.worldPos = worldPosition.xyz;
                 o.vertex = UnityObjectToClipPos(worldPosition);
                 o.normal = UnityObjectToWorldNormal(v.normal);
+                o.color = _InstanceColor[id] / 255.0;
                 return o;
             }
 
@@ -49,7 +53,7 @@ Shader "Custom/InstancedCubes"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                return half4(col,col,col,1);
+                return i.color;
             }
             ENDCG
         }

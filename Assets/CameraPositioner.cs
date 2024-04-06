@@ -17,6 +17,6 @@ public class CameraPositioner : MonoBehaviour
         var gridSize = cc.dim;
         var viewAngle = GetComponent<Camera>().fieldOfView;
         var distanceAwayFromGrid = cc.dim / Mathf.Tan(Mathf.Deg2Rad * viewAngle);
-        this.transform.position = new Vector3(-gridSize/2, -gridSize/2, distanceAwayFromGrid);
+        this.transform.position = new Vector3(-gridSize/2f, -gridSize/2f, distanceAwayFromGrid);
     }
 }

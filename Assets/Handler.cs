@@ -17,7 +17,8 @@ public class Handler : MonoBehaviour
     public bool dynamicallyLoadFrames = true;
     public int framesToLoadAhead = 10;
     private int framesLoaded = 0;
-    private bool[] onOffArr;
+    // this has to be a float and not a byte (even though a byte is totally enough) because gpus and shaders are wusses who are afraid of true speed and power
+    private float[] modifiedPixels;
 
     public CubeContainer cc;
     // Start is called before the first frame update
@@ -32,57 +33,55 @@ public class Handler : MonoBehaviour
     {
         if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
         int dim = cc.dim;
-        onOffArr = new bool[dim * dim];
-        int onCount = 0;
+        modifiedPixels = new float[dim * dim];
         // Debug.Log($"what is currFrame {currFrame}, framesToLookAhead {framesToLoadAhead}, and framesLoaded {framesLoaded}?");
         var jpeg = jpegs[currFrame + framesToLoadAhead - framesLoaded];
-        var pixels = jpeg.GetPixels32();
-        int textureSize = 1024;
-        int samplingInterval = textureSize / dim;
+        var pixels = jpeg.GetRawTextureData();
+        Vector2Int textureSize = new Vector2Int(2048, 1536);
+        
 
 
-        var onOffArrNative = new NativeArray<bool>(onOffArr, Allocator.TempJob);
-        var pixelsNative = new NativeArray<Color32>(pixels, Allocator.TempJob);
+        var modifiedPixelsNative = new NativeArray<float>(modifiedPixels, Allocator.TempJob);
+        var pixelsNative = new NativeArray<byte>(pixels, Allocator.TempJob);
 
-        var job = new PixelReadJob()
+        var job = new SampleImageJob()
         {
             Pixels = pixelsNative,
-            OnOffArr = onOffArrNative,
-            SamplingInterval = samplingInterval,
+            ModifiedArr = modifiedPixelsNative,
             Dim = dim,
             TextureSize = textureSize
         };
 
-        JobHandle jobHandle = job.Schedule(onOffArr.Length, 64);
+        JobHandle jobHandle = job.Schedule(modifiedPixels.Length, 64);
         jobHandle.Complete();
         
         currFrame++;
         // we used to save how many needed were on in total, which is useful - think about how to get it back
-        cc.GenerateCubeInfo(onOffArrNative,onCount);
+        cc.GenerateCubeInfo(modifiedPixelsNative, pixels);
         
         pixelsNative.Dispose();
     }
-
-    public struct PixelReadJob : IJobParallelFor
+    
+    public struct SampleImageJob : IJobParallelFor
     {
-        [ReadOnly] public NativeArray<Color32> Pixels;
-        public NativeArray<bool> OnOffArr;
-        public int SamplingInterval;
+        [ReadOnly] public NativeArray<byte> Pixels;
+        public NativeArray<float> ModifiedArr;
         public int Dim;
-        public int TextureSize;
+        public Vector2Int TextureSize;
     
         public void Execute(int index)
         {
-            int j = index / Dim; // row
-            int k = index % Dim; // column
-        
-            int originalX = k * SamplingInterval;
-            int originalY = j * SamplingInterval;
-        
-            if (Pixels[originalY * TextureSize + originalX].r < 128)
-                OnOffArr[index] = false;
-            else
-                OnOffArr[index] = true;
+            int row = index / Dim; // Row in the downscaled image
+            int col = index % Dim; // Column in the downscaled image
+            
+            float scaleWidth = (float)TextureSize.x / Dim;
+            float scaleHeight = (float)TextureSize.y / Dim;
+
+            int originalX = (int)(col * scaleWidth);
+            int originalY = (int)(row * scaleHeight);
+
+            // Correct indexing for accessing a pixel in a linear array
+            ModifiedArr[index] = Pixels[originalY * TextureSize.x + originalX];
         }
     }
 
