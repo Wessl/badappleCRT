@@ -26,6 +26,8 @@ public class Handler : MonoBehaviour
     private AudioSource _audio;
 
     private int _totalFrames;
+
+    private Vector2Int textureSize;
     // Start is called before the first frame update
     void Start()
     {
@@ -34,6 +36,8 @@ public class Handler : MonoBehaviour
         if (dynamicallyLoadFrames) DynamicFrameLoad();
         System.IO.DirectoryInfo frameDirectory = System.IO.Directory.CreateDirectory("Assets/Resources/frames");
         _totalFrames = frameDirectory.GetFiles().Length / 2;
+        Texture2D sampleTexture = Resources.Load<Texture2D>("frames/out-001");
+        textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
     }
 
     void FixedUpdate()
@@ -49,7 +53,7 @@ public class Handler : MonoBehaviour
        
         var jpeg = _jpegs[currFrame + framesToLoadAhead - framesLoaded];
         var pixels = jpeg.GetRawTextureData();
-        Vector2Int textureSize = new Vector2Int(2048, 1536);
+        
         
         var modifiedPixelsNative = new NativeArray<float>(dim*dim, Allocator.TempJob);
         var pixelsNative = new NativeArray<byte>(pixels, Allocator.TempJob);
@@ -121,6 +125,7 @@ public class Handler : MonoBehaviour
         Resources.UnloadUnusedAssets();
     }
 
+    #if UNITY_EDITOR
     void PreHandle()
     {
         for (int i = 0; i < _jpegs.Length; i++)
@@ -143,4 +148,5 @@ public class Handler : MonoBehaviour
         }
         
     }
+    #endif
 }
