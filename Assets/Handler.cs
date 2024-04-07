@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEditor;
@@ -22,15 +23,27 @@ public class Handler : MonoBehaviour
     private float[] modifiedPixels;
 
     public CubeContainer cc;
+    private AudioSource _audio;
+
+    private int _totalFrames;
     // Start is called before the first frame update
     void Start()
     {
+        _audio = GameObject.FindObjectOfType<AudioSource>();
         currFrame = 0;
         if (dynamicallyLoadFrames) DynamicFrameLoad();
+        System.IO.DirectoryInfo frameDirectory = System.IO.Directory.CreateDirectory("Assets/Resources/frames");
+        _totalFrames = frameDirectory.GetFiles().Length / 2;
     }
 
     void FixedUpdate()
     {
+        if (currFrame >= _totalFrames)
+        {
+            _audio.volume = 0;
+            return;
+        }
+        if (!_audio.isPlaying) _audio.Play();
         if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
         int dim = cc.dim;
        
@@ -49,7 +62,7 @@ public class Handler : MonoBehaviour
             TextureSize = textureSize
         };
 
-        JobHandle jobHandle = job.Schedule(dim*dim, 64);
+        JobHandle jobHandle = job.Schedule(dim*dim, 512);
         jobHandle.Complete();
         
         currFrame++;

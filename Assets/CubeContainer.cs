@@ -37,6 +37,7 @@ public class CubeContainer : MonoBehaviour
     {
         // Also clean up your code convetions with variable names...
         // There is a lot of copying around data - do we really need to copy it over to a float array before setting the data? 
+        // I need more speed. more power. more cool. 
         int totalCubes = dim * dim;
         var positionsNative = new NativeArray<Vector3>(totalCubes, Allocator.TempJob);
         if (_positions?.Length != totalCubes)_positions = new Vector3[totalCubes];
@@ -52,9 +53,8 @@ public class CubeContainer : MonoBehaviour
             Dim = dim
         };
         
-        JobHandle handle = job.Schedule(modifiedPixels.Length, 16 ); 
+        JobHandle handle = job.Schedule(modifiedPixels.Length, 64 ); 
         handle.Complete();
-        
         positionsNative.CopyTo(_positions);
         
         //Dispose - we don't appreciate memory leakers 'round these parts...

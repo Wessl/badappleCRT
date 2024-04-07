@@ -155,7 +155,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _jpegs: []
   dynamicallyLoadFrames: 1
-  framesToLoadAhead: 4
+  framesToLoadAhead: 12
   cc: {fileID: 90319167}
 --- !u!114 &90319167
 MonoBehaviour:
@@ -414,7 +414,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 8300000, guid: e8e62b1568b81ca4e84e15905b0583e2, type: 3}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
