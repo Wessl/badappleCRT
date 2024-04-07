@@ -34,8 +34,18 @@ public class Handler : MonoBehaviour
         _audio = GameObject.FindObjectOfType<AudioSource>();
         currFrame = 0;
         if (dynamicallyLoadFrames) DynamicFrameLoad();
-        System.IO.DirectoryInfo frameDirectory = System.IO.Directory.CreateDirectory("Assets/Resources/frames");
-        _totalFrames = frameDirectory.GetFiles().Length / 2;
+        #if UNITY_EDITOR
+        string path = "Assets/Resources/frames";
+        int fileAmount = System.IO.Directory.GetFiles(path).Length;
+        string frameCountPath = "Assets/Resources/frameCount.txt";
+        System.IO.File.WriteAllText(frameCountPath, fileAmount.ToString());
+        AssetDatabase.Refresh();
+        #else
+        var frameCountAsset = Resources.Load<TextAsset>("frameCount");
+        int.TryParse(frameCountAsset.text, out int fileAmount);
+        #endif
+        _totalFrames = fileAmount / 2;
+        Debug.Log($"Total frames to render: {_totalFrames}");
         Texture2D sampleTexture = Resources.Load<Texture2D>("frames/out-001");
         textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
     }

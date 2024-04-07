@@ -20,6 +20,7 @@ public class CubeContainer : MonoBehaviour
     private int StrideVec3;
     private int StrideFloat;
     private float[] _modifiedPixels;
+    private bool _readyToRender;
     
     [SerializeField] private Shader drawMeshShader;
     [SerializeField] private Mesh cubeMesh;
@@ -31,6 +32,7 @@ public class CubeContainer : MonoBehaviour
         _mat.enableInstancing = true;
         StrideVec3 = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Vector3));
         StrideFloat = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
+        _readyToRender = false;
     }
 
     public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels)
@@ -56,6 +58,7 @@ public class CubeContainer : MonoBehaviour
         JobHandle handle = job.Schedule(modifiedPixels.Length, 64 ); 
         handle.Complete();
         positionsNative.CopyTo(_positions);
+        _readyToRender = true;
         
         //Dispose - we don't appreciate memory leakers 'round these parts...
         positionsNative.Dispose();
@@ -78,7 +81,7 @@ public class CubeContainer : MonoBehaviour
 
     private void Update()
     {
-        Render();
+        if(_readyToRender)Render();
     }
     public void Render()
     {
