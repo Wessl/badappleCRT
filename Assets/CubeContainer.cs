@@ -23,7 +23,7 @@ public class CubeContainer : MonoBehaviour
     private bool _readyToRender;
     
     [SerializeField] private Shader drawMeshShader;
-    [SerializeField] private Mesh cubeMesh;
+    [SerializeField] public Mesh cubeMesh;
 
 
     private void Awake()

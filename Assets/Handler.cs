@@ -17,6 +17,8 @@ public class Handler : MonoBehaviour
 
     private int currFrame;
     public bool dynamicallyLoadFrames = true;
+    private bool hasStartedPlayingVideo;
+    private bool isFinished;
     public int framesToLoadAhead = 10;
     private int framesLoaded = 0;
     // this has to be a float and not a byte (even though a byte is totally enough) because gpus and shaders are wusses who are afraid of true speed and power
@@ -26,28 +28,55 @@ public class Handler : MonoBehaviour
     private AudioSource _audio;
 
     private int _totalFrames;
+    private float platformVideoDelay;
 
     private Vector2Int textureSize;
-    // Start is called before the first frame update
+    private long totalPixelsShown;
+    
+    private void Awake()
+    {
+        # if UNITY_EDITOR
+        platformVideoDelay = 0.125f;
+        #elif UNITY_STANDALONE_WIN
+        platformVideoDelay = 0.3f;
+        #endif
+    }
+
     void Start()
     {
+        PrintBadAppleLog();
         _audio = GameObject.FindObjectOfType<AudioSource>();
+        hasStartedPlayingVideo = false;
+        isFinished = false;
         currFrame = 0;
         if (dynamicallyLoadFrames) DynamicFrameLoad();
-        #if UNITY_EDITOR
+        var fileAmount = TryFindFileAmount();
+        _totalFrames = fileAmount / 2;
+        Debug.Log($"Total frames to render: {_totalFrames}");
+        Texture2D sampleTexture = Resources.Load<Texture2D>("frames/out-001");
+        textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
+    }
+
+    int TryFindFileAmount()
+    {
+#if UNITY_EDITOR
         string path = "Assets/Resources/frames";
         int fileAmount = System.IO.Directory.GetFiles(path).Length;
         string frameCountPath = "Assets/Resources/frameCount.txt";
         System.IO.File.WriteAllText(frameCountPath, fileAmount.ToString());
         AssetDatabase.Refresh();
-        #else
+        return fileAmount;
+#else
         var frameCountAsset = Resources.Load<TextAsset>("frameCount");
         int.TryParse(frameCountAsset.text, out int fileAmount);
-        #endif
-        _totalFrames = fileAmount / 2;
-        Debug.Log($"Total frames to render: {_totalFrames}");
-        Texture2D sampleTexture = Resources.Load<Texture2D>("frames/out-001");
-        textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
+        return fileAmount;
+#endif
+    }
+
+    void PrintBadAppleLog()
+    {
+        Debug.Log("Welcome to Bad Apple - programming by Dez/Wesslo. Original music video by nomico as 'Bad Apple!!'. Upscaled video courtesy of あにら on archive.org.");
+        Debug.Log(Resources.Load<TextAsset>("ascii"));
     }
 
     void FixedUpdate()
@@ -55,9 +84,27 @@ public class Handler : MonoBehaviour
         if (currFrame >= _totalFrames)
         {
             _audio.volume = 0;
+            _audio.Pause();
+            if (isFinished == false && !isFinished) Finish();
             return;
         }
-        if (!_audio.isPlaying) _audio.Play();
+        if (!hasStartedPlayingVideo && CanStartPlayingVideo() == false) return;
+        
+        PresentFrame();
+    }
+
+    void Finish()
+    {
+        isFinished = true;
+        Debug.Log("Bad Apple finished rendering. Stats:");
+        var totalVerticesRendered = totalPixelsShown * cc.cubeMesh.vertexCount;
+        Debug.Log($"A total of {totalPixelsShown} pixels were rendered in real time.");
+        Debug.Log($"Each pixel is actually a fully rasterized cube in 3d space. Thus, {totalVerticesRendered} vertices were rendered.");
+    }
+
+    private void PresentFrame()
+    {
+        Debug.Log("We are currently presenting frame number " + currFrame + " and it has been " + Time.time + " seconds.");
         if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
         int dim = cc.dim;
        
@@ -82,6 +129,21 @@ public class Handler : MonoBehaviour
         currFrame++;
         cc.GenerateCubeInfo(modifiedPixelsNative, pixels);
         pixelsNative.Dispose();
+        
+        // Stats
+        totalPixelsShown += dim * dim;
+    }
+
+    bool CanStartPlayingVideo()
+    {
+        if (Time.time > platformVideoDelay)
+        {
+            hasStartedPlayingVideo = true;
+            _audio.time -= (Time.time - platformVideoDelay);
+            return true;
+        }
+
+        return false;
     }
     
     public struct SampleImageJob : IJobParallelFor
