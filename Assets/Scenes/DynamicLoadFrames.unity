@@ -157,7 +157,6 @@ MonoBehaviour:
   dynamicallyLoadFrames: 1
   framesToLoadAhead: 12
   cc: {fileID: 90319167}
-  timeScale: 1
 --- !u!114 &90319167
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -247,8 +246,8 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 1000
-  field of view: 60
+  far clip plane: 2000
+  field of view: 45
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -293,6 +292,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 759f7f17838a3804388165139e69bea3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  divideBy: 1.135
 --- !u!1 &1044103668
 GameObject:
   m_ObjectHideFlags: 0
