@@ -10,7 +10,7 @@ using UnityEngine.Serialization;
 using UnityEngine.Video;
 using UnityEngine.Windows;
 
-public class Handler : MonoBehaviour
+public class DynamicResolutionHandler : MonoBehaviour
 {
     private string pathToJpegs;
     public Texture2D[] _jpegs;
