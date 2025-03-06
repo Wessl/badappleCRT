@@ -108,13 +108,32 @@ public class SDFHandler : MonoBehaviour
         Debug.Log("We are currently presenting frame number " + currFrame + " and it has been " + Time.time + " seconds.");
         if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
         var jpeg = _jpegs[currFrame + framesToLoadAhead - framesLoaded];
+        // Technically using bytes here instead of bits is not necessary... Maybe we can do something about that?
         NativeArray<byte> pixels = jpeg.GetRawTextureData<byte>();
         // And now - actually do something with this :D
+        CalculateSDF(pixels, jpeg.width, jpeg.height);
         targetTexture.LoadRawTextureData(pixels);
         targetTexture.Apply();
         currFrame++;
         pixels.Dispose();
 
+    }
+
+    void CalculateSDF(NativeArray<byte> pixels, int width, int height)
+    {
+        // Naive first approach: Do a sweep around each pixel that is not black, until we find one that is black. 
+        Debug.Log($"Byte pixel 0: {pixels[0]}");
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            byte pixel = pixels[i];
+            CheckSurroundingPixels(i % width, (int)Math.Floor((double)i / width));
+        }
+    }
+    bool CheckSurroundingPixels(int x, int y)
+    {
+        throw new NotImplementedException();
+        //if (x < 0) // blah blah
+        //if (y >= height) // blasch blacsh
     }
 
     bool CanStartPlayingVideo()

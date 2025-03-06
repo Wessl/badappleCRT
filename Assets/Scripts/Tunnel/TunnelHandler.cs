@@ -10,33 +10,34 @@ using UnityEngine.Serialization;
 using UnityEngine.Video;
 using UnityEngine.Windows;
 
-public class DynamicResolutionHandler : MonoBehaviour
+public class TunnelHandler : MonoBehaviour
 {
-    private string pathToJpegs;
+    private string m_pathToJpegs;
     public Texture2D[] _jpegs;
 
-    private int currFrame;
+    private int m_currFrame;
     public bool dynamicallyLoadFrames = true;
-    private bool hasStartedPlayingVideo;
-    private bool isFinished;
+    private bool m_hasStartedPlayingVideo;
+    private bool m_isFinished;
     public int framesToLoadAhead = 10;
-    private int framesLoaded = 0;
+    private int m_framesLoaded = 0;
     // this has to be a float and not a byte (even though a byte is totally enough) because gpus and shaders are wusses who are afraid of true speed and power
-    private float[] modifiedPixels;
+    private float[] m_modifiedPixels;
 
-    public CubeContainer cc;
-    private AudioSource _audio;
+    public CubeContainerMaintainer cc;
+    private AudioSource m_audio;
 
-    private int _totalFrames;
-    private float platformVideoDelay;
+    private int m_totalFrames;
+    private float m_platformVideoDelay;
 
-    private Vector2Int textureSize;
-    private long totalPixelsShown;
+    private Vector2Int m_textureSize;
+    private long m_totalPixelsShown;
+
     
     private void Awake()
     {
         # if UNITY_EDITOR
-        platformVideoDelay = 0.125f;
+        m_platformVideoDelay = 0.125f;
         #elif UNITY_STANDALONE_WIN
         platformVideoDelay = 0.3f;
         #endif
@@ -45,16 +46,19 @@ public class DynamicResolutionHandler : MonoBehaviour
     void Start()
     {
         PrintBadAppleLog();
-        _audio = FindFirstObjectByType<AudioSource>();
-        hasStartedPlayingVideo = false;
-        isFinished = false;
-        currFrame = 0;
+        m_audio = FindFirstObjectByType<AudioSource>();
+        m_hasStartedPlayingVideo = false;
+        m_isFinished = false;
+        m_currFrame = 0;
         if (dynamicallyLoadFrames) DynamicFrameLoad();
+        
         var fileAmount = TryFindFileAmount();
-        _totalFrames = fileAmount / 2;
-        Debug.Log($"Total frames to render: {_totalFrames}");
+        m_totalFrames = fileAmount / 2;
+        Debug.Log($"Total frames to render: {m_totalFrames}");
         Texture2D sampleTexture = Resources.Load<Texture2D>("frames/out-001");
-        textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
+        
+        m_textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
+        cc.Frames = m_framesLoaded;
     }
 
     int TryFindFileAmount()
@@ -81,65 +85,64 @@ public class DynamicResolutionHandler : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (currFrame >= _totalFrames)
+        if (m_currFrame >= m_totalFrames)
         {
-            _audio.volume = 0;
-            _audio.Pause();
-            if (isFinished == false && !isFinished) Finish();
+            m_audio.volume = 0;
+            m_audio.Pause();
+            if (m_isFinished == false && !m_isFinished) Finish();
             return;
         }
-        if (!hasStartedPlayingVideo && CanStartPlayingVideo() == false) return;
+        if (!m_hasStartedPlayingVideo && CanStartPlayingVideo() == false) return;
         
         PresentFrame();
     }
 
     void Finish()
     {
-        isFinished = true;
+        m_isFinished = true;
         Debug.Log("Bad Apple finished rendering. Stats:");
-        var totalVerticesRendered = totalPixelsShown * cc.cubeMesh.vertexCount;
-        Debug.Log($"A total of {totalPixelsShown} pixels were rendered in real time.");
+        var totalVerticesRendered = m_totalPixelsShown * cc.cubeMesh.vertexCount;
+        Debug.Log($"A total of {m_totalPixelsShown} pixels were rendered in real time.");
         Debug.Log($"Each pixel is actually a fully rasterized cube in 3d space. Thus, {totalVerticesRendered} vertices were rendered.");
     }
 
     private void PresentFrame()
     {
-        Debug.Log("We are currently presenting frame number " + currFrame + " and it has been " + Time.time + " seconds.");
-        if (dynamicallyLoadFrames && (currFrame >= (framesLoaded))) DynamicFrameLoad();
+        Debug.Log("We are currently presenting frame number " + m_currFrame + " and it has been " + Time.time + " seconds.");
+        if (dynamicallyLoadFrames && (m_currFrame >= (m_framesLoaded))) DynamicFrameLoad();
         int dim = cc.dim;
        
-        var jpeg = _jpegs[currFrame + framesToLoadAhead - framesLoaded];
+        var jpeg = _jpegs[m_currFrame + framesToLoadAhead - m_framesLoaded];
         var pixels = jpeg.GetRawTextureData();
         
-        
-        var modifiedPixelsNative = new NativeArray<float>(dim*dim, Allocator.TempJob);
         var pixelsNative = new NativeArray<byte>(pixels, Allocator.TempJob);
+        var modifiedPixelsNative = new NativeArray<float>(dim*dim, Allocator.TempJob);
 
         var job = new SampleImageJob()
         {
             Pixels = pixelsNative,
             ModifiedPixels = modifiedPixelsNative,
             Dim = dim,
-            TextureSize = textureSize
+            TextureSize = m_textureSize
         };
 
         JobHandle jobHandle = job.Schedule(dim*dim, 512);
         jobHandle.Complete();
         
-        currFrame++;
+        m_currFrame++;
         cc.GenerateCubeInfo(modifiedPixelsNative, pixels);
         pixelsNative.Dispose();
         
         // Stats
-        totalPixelsShown += dim * dim;
+        m_totalPixelsShown += dim * dim;
     }
 
     bool CanStartPlayingVideo()
     {
-        if (Time.time > platformVideoDelay)
+        if (Time.time > m_platformVideoDelay)
         {
-            hasStartedPlayingVideo = true;
-            _audio.time -= (Time.time - platformVideoDelay);
+            m_hasStartedPlayingVideo = true;
+            m_audio.time -= (Time.time - m_platformVideoDelay);
             return true;
         }
 
@@ -149,8 +152,8 @@ public class DynamicResolutionHandler : MonoBehaviour
     public struct SampleImageJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<byte> Pixels;
-        [ReadOnly]public int Dim;
-        [ReadOnly]public Vector2Int TextureSize;
+        [ReadOnly] public int Dim;
+        [ReadOnly] public Vector2Int TextureSize;
         public NativeArray<float> ModifiedPixels;
     
         public void Execute(int index)
@@ -181,13 +184,13 @@ public class DynamicResolutionHandler : MonoBehaviour
         // Load future assets
         string basePath = "frames/out-";
         _jpegs = new Texture2D[framesToLoadAhead];
-        int frameToLoad = currFrame+1;
+        int frameToLoad = m_currFrame+1;
         for (int i = 0; i < framesToLoadAhead; i++)
         {
             string nextPath = String.Concat(basePath, frameToLoad.ToString("D3"));
             _jpegs[i] = Resources.Load<Texture2D>(nextPath);
             frameToLoad++;
-            framesLoaded++;
+            m_framesLoaded++;
         }
         cc.dim++;
     }
