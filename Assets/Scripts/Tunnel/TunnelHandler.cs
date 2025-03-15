@@ -40,7 +40,7 @@ public class TunnelHandler : MonoBehaviour
         # if UNITY_EDITOR
         m_platformVideoDelay = 0.125f;
         #elif UNITY_STANDALONE_WIN
-        platformVideoDelay = 0.3f;
+        m_platformVideoDelay = 0.116f;
         #endif
     }
 

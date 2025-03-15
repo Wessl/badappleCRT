@@ -19,8 +19,9 @@ public class CameraTunnelPositioner : MonoBehaviour
         var distanceAwayFromGrid = ccm.dim / Mathf.Tan(Mathf.Deg2Rad * viewAngle);
         var midPosition = new Vector3(-gridSize/2f + 0.5f, -gridSize/2f +.5f, distanceAwayFromGrid - fixedTimeSteps++);
         
-        // OK now like, rotate around it on the XY plane
-        transform.position = midPosition + new Vector3(Mathf.Sin(Time.time) * 30 + ccm.dim, Mathf.Cos(Time.time) * 30 + ccm.dim, -60);
+        // OK now like, rotate around it on the XY plane.
+        // multiply sin(time) by dim to scale (linearly) out correctly. add with ccm.dim to adjust for offset (square starts to be drawn at origin out dim, dim in x,y)
+        transform.position = midPosition + new Vector3(Mathf.Sin(Time.time) * ccm.dim + ccm.dim, Mathf.Cos(Time.time) * ccm.dim + ccm.dim, -ccm.dim * 4);
         transform.LookAt(midPosition + new Vector3(ccm.dim, ccm.dim, 0));
     }
 }
