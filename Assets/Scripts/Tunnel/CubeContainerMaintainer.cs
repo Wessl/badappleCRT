@@ -17,8 +17,6 @@ public class CubeContainerMaintainer : MonoBehaviour
     private NativeArray<float> m_pixels;
     private ComputeBuffer m_posBuffer;
     private ComputeBuffer m_colorBuffer;
-    private static readonly int Posbuffer = Shader.PropertyToID("posbuffer");
-    private static readonly int Camerapos = Shader.PropertyToID("camerapos");
     private int StrideVec3;
     private int StrideFloat;
     private bool m_readyToRender;
@@ -38,6 +36,8 @@ public class CubeContainerMaintainer : MonoBehaviour
         StrideFloat = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
         m_readyToRender = false;
         m_cubeIndex = 0;
+        // Put empty data into computebuffers
+       
     }
 
     public void SetupBuffers()
@@ -59,8 +59,6 @@ public class CubeContainerMaintainer : MonoBehaviour
         int totalCubesThisFrame = dim * dim;
         var positionsNative = new NativeArray<Vector3>(totalCubesThisFrame, Allocator.TempJob);
         
-       // Todo: here, copy pixels from modifiedpixels into m_pixels at the correct position in the array. 
-       // Then do the same thing for the positions. 
         var job = new GenerateCubeInfoJob()
         {
             Positions = positionsNative,
@@ -71,15 +69,13 @@ public class CubeContainerMaintainer : MonoBehaviour
         JobHandle handle = job.Schedule(modifiedPixels.Length, 64); 
         handle.Complete();
         
-        // Copying - surely there are better ways than this? 
+        // Copying from NativeArray with new values into NativeArray with all previous values via Slice
         NativeSlice<Vector3> positionArraySlice = new NativeSlice<Vector3>(m_positions, m_cubeIndex, positionsNative.Length);
         positionArraySlice.CopyFrom(positionsNative);
         NativeSlice<float> pixelArraySlice = new NativeSlice<float>(m_pixels, m_cubeIndex, positionsNative.Length);
         pixelArraySlice.CopyFrom(modifiedPixels);
         
         m_readyToRender = true;
-        
-        //Dispose - we don't appreciate memory leakers 'round these parts...
         positionsNative.Dispose();
         modifiedPixels.Dispose();
         
@@ -110,14 +106,14 @@ public class CubeContainerMaintainer : MonoBehaviour
     {
         Profiler.BeginSample("Render()");
         
-        
+        // Write data from NativeArray into ComputeBuffer using Begin/EndWrite. Faster than using SetData(). 
+        // TODO: Double / Triple buffer this to access and write to GPU memory directly. 
         Profiler.BeginSample("WritePositionData");
         NativeArray<Vector3> posData = m_posBuffer.BeginWrite<Vector3>(m_cubeIndex, dim*dim );
         for (int i = 0; i < dim*dim; i++)
         {
             posData[i] = m_positions[m_cubeIndex -dim*dim + i];
         }
-        // EndWrite appears to also dispose the data object 
         m_posBuffer.EndWrite<Vector3>(dim*dim);
         Profiler.EndSample();
         
@@ -127,14 +123,13 @@ public class CubeContainerMaintainer : MonoBehaviour
         {
             colorData[i] = m_pixels[m_cubeIndex -dim*dim + i];
         }
-        // EndWrite appears to also dispose the data object 
         m_colorBuffer.EndWrite<float>(dim*dim);
         Profiler.EndSample();
         
         _mat.SetBuffer("_InstancePosition", m_posBuffer);
         _mat.SetBuffer("_InstanceColor", m_colorBuffer);
         
-        var bounds = new Bounds(Camera.main.transform.position, Vector3.one * 2000f);
+        var bounds = new Bounds(Vector3.zero, Vector3.one * 2000f);
         int cubesToDraw = m_positions.Length;
         Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, _mat, bounds, cubesToDraw, null, ShadowCastingMode.Off, false);
         Profiler.EndSample();
@@ -142,7 +137,6 @@ public class CubeContainerMaintainer : MonoBehaviour
     
     void OnDestroy()
     {
-        Debug.Log("Releasing ComputeBuffers and NativeArrays!");
         m_posBuffer?.Release();
         m_colorBuffer?.Release();
         m_positions.Dispose();

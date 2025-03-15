@@ -202,6 +202,7 @@ public class TunnelHandler : MonoBehaviour
     private void OnDestroy()
     {
         Resources.UnloadUnusedAssets();
+        GC.Collect();
     }
 
     #if UNITY_EDITOR
