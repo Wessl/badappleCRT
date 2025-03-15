@@ -13,14 +13,14 @@ public class CubeContainerMaintainer : MonoBehaviour
 {
     public int dim = 512;
     private Material _mat;
-    private Vector3[] m_positions;
+    private NativeArray<Vector3> m_positions;
+    private NativeArray<float> m_pixels;
     private ComputeBuffer m_posBuffer;
     private ComputeBuffer m_colorBuffer;
     private static readonly int Posbuffer = Shader.PropertyToID("posbuffer");
     private static readonly int Camerapos = Shader.PropertyToID("camerapos");
     private int StrideVec3;
     private int StrideFloat;
-    private float[] m_pixels;
     private bool m_readyToRender;
 
     private int m_cubeIndex;
@@ -48,10 +48,10 @@ public class CubeContainerMaintainer : MonoBehaviour
             Debug.LogError($"{nameof(totalCubes)} is negative [{totalCubes}], which probably means you tried to assign a number larger than {System.Int32.MaxValue}");
             return;
         }
-        m_positions = new Vector3[totalCubes];
-        m_pixels = new float[totalCubes];
-        m_posBuffer = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default);
-        m_colorBuffer = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default);
+        m_positions = new NativeArray<Vector3>(totalCubes, Allocator.Persistent);
+        m_pixels = new NativeArray<float>(totalCubes, Allocator.Persistent);
+        m_posBuffer = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+        m_colorBuffer = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
     }
 
     public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels, int currentFrame)
@@ -72,13 +72,10 @@ public class CubeContainerMaintainer : MonoBehaviour
         handle.Complete();
         
         // Copying - surely there are better ways than this? 
-        Vector3[] tempPosArray = new Vector3[positionsNative.Length];
-        float[] tempColorArray = new float[modifiedPixels.Length];
-        positionsNative.CopyTo(tempPosArray);
-        tempPosArray.CopyTo(m_positions, m_cubeIndex);
-        modifiedPixels.CopyTo(tempColorArray);
-        tempColorArray.CopyTo(m_pixels, m_cubeIndex);
-        Debug.Log($"What is m_pixels of m_cubeIndex? {m_pixels[m_cubeIndex]}");
+        NativeSlice<Vector3> positionArraySlice = new NativeSlice<Vector3>(m_positions, m_cubeIndex, positionsNative.Length);
+        positionArraySlice.CopyFrom(positionsNative);
+        NativeSlice<float> pixelArraySlice = new NativeSlice<float>(m_pixels, m_cubeIndex, positionsNative.Length);
+        pixelArraySlice.CopyFrom(modifiedPixels);
         
         m_readyToRender = true;
         
@@ -112,8 +109,28 @@ public class CubeContainerMaintainer : MonoBehaviour
     public void Render()
     {
         Profiler.BeginSample("Render()");
-        m_posBuffer.SetData(m_positions);
-        m_colorBuffer.SetData(m_pixels);
+        
+        
+        Profiler.BeginSample("WritePositionData");
+        NativeArray<Vector3> posData = m_posBuffer.BeginWrite<Vector3>(m_cubeIndex, dim*dim );
+        for (int i = 0; i < dim*dim; i++)
+        {
+            posData[i] = m_positions[m_cubeIndex -dim*dim + i];
+        }
+        // EndWrite appears to also dispose the data object 
+        m_posBuffer.EndWrite<Vector3>(dim*dim);
+        Profiler.EndSample();
+        
+        Profiler.BeginSample("WritePixelData");
+        NativeArray<float> colorData = m_colorBuffer.BeginWrite<float>(m_cubeIndex, dim*dim );
+        for (int i = 0; i < dim*dim; i++)
+        {
+            colorData[i] = m_pixels[m_cubeIndex -dim*dim + i];
+        }
+        // EndWrite appears to also dispose the data object 
+        m_colorBuffer.EndWrite<float>(dim*dim);
+        Profiler.EndSample();
+        
         _mat.SetBuffer("_InstancePosition", m_posBuffer);
         _mat.SetBuffer("_InstanceColor", m_colorBuffer);
         
@@ -125,7 +142,10 @@ public class CubeContainerMaintainer : MonoBehaviour
     
     void OnDestroy()
     {
+        Debug.Log("Releasing ComputeBuffers and NativeArrays!");
         m_posBuffer?.Release();
         m_colorBuffer?.Release();
+        m_positions.Dispose();
+        m_pixels.Dispose();
     }
 }

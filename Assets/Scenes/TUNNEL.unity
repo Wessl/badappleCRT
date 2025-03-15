@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ac282c61c321f74cbf053dae6637710, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dim: 32
+  dim: 16
   drawMeshShader: {fileID: 4800000, guid: 26c90761b7c3ecc47a5573c6585d0b4d, type: 3}
   cubeMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!114 &90319170

@@ -9,7 +9,7 @@ public class CameraPositioner : MonoBehaviour
     public float divideBy = 1.75f;
     private void Start()
     {
-        cc = FindObjectOfType<CubeContainerMaintainer>();
+        cc = FindAnyObjectByType<CubeContainerMaintainer>();
     }
 
     void FixedUpdate()

@@ -47,7 +47,7 @@ public class SDFHandler : MonoBehaviour
     void Start()
     {
         PrintBadAppleLog();
-        _audio = GameObject.FindObjectOfType<AudioSource>();
+        _audio = FindAnyObjectByType<AudioSource>();
         hasStartedPlayingVideo = false;
         isFinished = false;
         currFrame = 0;
