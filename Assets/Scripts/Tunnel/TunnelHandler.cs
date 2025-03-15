@@ -6,6 +6,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Serialization;
 using UnityEngine.Video;
 using UnityEngine.Windows;
@@ -58,7 +59,8 @@ public class TunnelHandler : MonoBehaviour
         Texture2D sampleTexture = Resources.Load<Texture2D>("frames/out-001");
         
         m_textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
-        cc.Frames = m_framesLoaded;
+        cc.Frames = m_totalFrames;
+        cc.SetupBuffers();
     }
 
     int TryFindFileAmount()
@@ -130,7 +132,7 @@ public class TunnelHandler : MonoBehaviour
         jobHandle.Complete();
         
         m_currFrame++;
-        cc.GenerateCubeInfo(modifiedPixelsNative, pixels);
+        cc.GenerateCubeInfo(modifiedPixelsNative, pixels, m_currFrame);
         pixelsNative.Dispose();
         
         // Stats
@@ -175,6 +177,7 @@ public class TunnelHandler : MonoBehaviour
 
     private void DynamicFrameLoad()
     {
+        Profiler.BeginSample("DynamicFrameLoad");
         // Unload previous assets
         foreach (var oldJpeg in _jpegs)
         {
@@ -192,7 +195,8 @@ public class TunnelHandler : MonoBehaviour
             frameToLoad++;
             m_framesLoaded++;
         }
-        cc.dim++;
+        // cc.dim++;
+        Profiler.EndSample();
     }
 
     private void OnDestroy()

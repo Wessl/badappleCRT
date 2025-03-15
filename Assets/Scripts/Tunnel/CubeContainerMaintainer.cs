@@ -5,6 +5,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using Random = UnityEngine.Random;
 
@@ -37,15 +38,23 @@ public class CubeContainerMaintainer : MonoBehaviour
         StrideFloat = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
         m_readyToRender = false;
         m_cubeIndex = 0;
+    }
 
+    public void SetupBuffers()
+    {
         int totalCubes = dim * dim * Frames;
+        if (totalCubes <= 0)
+        {
+            Debug.LogError($"{nameof(totalCubes)} is negative [{totalCubes}], which probably means you tried to assign a number larger than {System.Int32.MaxValue}");
+            return;
+        }
         m_positions = new Vector3[totalCubes];
         m_pixels = new float[totalCubes];
         m_posBuffer = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default);
         m_colorBuffer = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default);
     }
 
-    public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels)
+    public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels, int currentFrame)
     {
         int totalCubesThisFrame = dim * dim;
         var positionsNative = new NativeArray<Vector3>(totalCubesThisFrame, Allocator.TempJob);
@@ -55,18 +64,29 @@ public class CubeContainerMaintainer : MonoBehaviour
         var job = new GenerateCubeInfoJob()
         {
             Positions = positionsNative,
-            Dim = dim
+            Dim = dim,
+            Depth = currentFrame
         };
         
-        JobHandle handle = job.Schedule(modifiedPixels.Length, 64 ); 
+        JobHandle handle = job.Schedule(modifiedPixels.Length, 64); 
         handle.Complete();
-        positionsNative.CopyTo(m_positions);
+        
+        // Copying - surely there are better ways than this? 
+        Vector3[] tempPosArray = new Vector3[positionsNative.Length];
+        float[] tempColorArray = new float[modifiedPixels.Length];
+        positionsNative.CopyTo(tempPosArray);
+        tempPosArray.CopyTo(m_positions, m_cubeIndex);
+        modifiedPixels.CopyTo(tempColorArray);
+        tempColorArray.CopyTo(m_pixels, m_cubeIndex);
+        Debug.Log($"What is m_pixels of m_cubeIndex? {m_pixels[m_cubeIndex]}");
+        
         m_readyToRender = true;
         
         //Dispose - we don't appreciate memory leakers 'round these parts...
         positionsNative.Dispose();
         modifiedPixels.Dispose();
         
+        // We need it for posterity. :)
         m_cubeIndex += dim * dim;
     }
 
@@ -75,11 +95,12 @@ public class CubeContainerMaintainer : MonoBehaviour
     {
         public NativeArray<Vector3> Positions;
         public int Dim;
+        public int Depth;
 
         public void Execute(int i)
         {
             int y = i / Dim;
-            Vector3 position = new Vector3(i % Dim, y, 0);
+            Vector3 position = new Vector3(i % Dim, y, -Depth);
             Positions[i] = position;
         }
     }
@@ -90,6 +111,7 @@ public class CubeContainerMaintainer : MonoBehaviour
     }
     public void Render()
     {
+        Profiler.BeginSample("Render()");
         m_posBuffer.SetData(m_positions);
         m_colorBuffer.SetData(m_pixels);
         _mat.SetBuffer("_InstancePosition", m_posBuffer);
@@ -98,6 +120,7 @@ public class CubeContainerMaintainer : MonoBehaviour
         var bounds = new Bounds(Camera.main.transform.position, Vector3.one * 2000f);
         int cubesToDraw = m_positions.Length;
         Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, _mat, bounds, cubesToDraw, null, ShadowCastingMode.Off, false);
+        Profiler.EndSample();
     }
     
     void OnDestroy()

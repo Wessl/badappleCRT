@@ -5,11 +5,11 @@ using UnityEngine;
 
 public class CameraPositioner : MonoBehaviour
 {
-    private CubeContainer cc;
+    private CubeContainerMaintainer cc;
     public float divideBy = 1.75f;
     private void Start()
     {
-        cc = FindObjectOfType<CubeContainer>();
+        cc = FindObjectOfType<CubeContainerMaintainer>();
     }
 
     void FixedUpdate()
