@@ -15,8 +15,8 @@ public class CubeContainerMaintainer : MonoBehaviour
     private Material _mat;
     private NativeArray<Vector3> m_positions;
     private NativeArray<float> m_pixels;
-    private ComputeBuffer m_posBuffer;
-    private ComputeBuffer m_colorBuffer;
+    private ComputeBuffer[] m_posBuffer;
+    private ComputeBuffer[] m_colorBuffer;
     private int StrideVec3;
     private int StrideFloat;
     private bool m_readyToRender;
@@ -38,9 +38,13 @@ public class CubeContainerMaintainer : MonoBehaviour
         StrideFloat = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
         m_readyToRender = false;
         m_cubeIndex = 0;
-        // Put empty data into computebuffers
-        
+        // Triple buffer 
+        m_posBuffer = new ComputeBuffer[3];
+        m_colorBuffer = new ComputeBuffer[3];
     }
+    
+    // TODO: 1. Double / Triple buffering to directly copy into GPU memory
+    // TODO: 2. Implement circular buffer instead of 1 gigantic buffer holding everything in memory. 
 
     public void SetupBuffers()
     {
@@ -53,8 +57,12 @@ public class CubeContainerMaintainer : MonoBehaviour
         }
         m_positions = new NativeArray<Vector3>(totalCubes, Allocator.Persistent);
         m_pixels = new NativeArray<float>(totalCubes, Allocator.Persistent);
-        m_posBuffer = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
-        m_colorBuffer = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+        for (int i = 0; i < m_posBuffer.Length; i++)
+        {
+            m_posBuffer[i] = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+            m_colorBuffer[i] = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+        }
+        
         // Initialize with a position far away - if stuff initializes at the origin, it creates huge "overdraw" at those pixels
         // since the camera renders quite a few pixels containing them at the beginning, put them far away :D 
         Vector3[] defaultPositions = new Vector3[totalCubes];
@@ -62,11 +70,15 @@ public class CubeContainerMaintainer : MonoBehaviour
         {
             defaultPositions[i] = new Vector3(10000f, 10000f, 10000f);
         }
-        m_posBuffer.SetData(defaultPositions);
-        // Zero out data
-        m_colorBuffer.SetData(new float[totalCubes * StrideFloat / sizeof(float)]); 
-        _mat.SetBuffer(InstancePosition, m_posBuffer);
-        _mat.SetBuffer(InstanceColor, m_colorBuffer);
+
+        for (int i = 0; i < m_posBuffer.Length; i++)
+        {
+            m_posBuffer[i].SetData(defaultPositions);
+            m_colorBuffer[i].SetData(new float[totalCubes * StrideFloat / sizeof(float)]); 
+        }
+        
+        _mat.SetBuffer(InstancePosition, m_posBuffer[0]);
+        _mat.SetBuffer(InstanceColor, m_colorBuffer[0]);
     }
 
     public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels, int currentFrame)
@@ -120,29 +132,29 @@ public class CubeContainerMaintainer : MonoBehaviour
     public void Render()
     {
         Profiler.BeginSample("Render()");
+        int frameCount = Time.frameCount;
         
         // Write data from NativeArray into ComputeBuffer using Begin/EndWrite. Faster than using SetData(). 
-        // TODO: Double / Triple buffer this to access and write to GPU memory directly. 
         Profiler.BeginSample("WritePositionData");
-        NativeArray<Vector3> posData = m_posBuffer.BeginWrite<Vector3>(m_cubeIndex, dim*dim );
+        NativeArray<Vector3> posData = m_posBuffer[frameCount % 3].BeginWrite<Vector3>(m_cubeIndex, dim*dim );
         for (int i = 0; i < dim*dim; i++)
         {
             posData[i] = m_positions[m_cubeIndex -dim*dim + i];
         }
-        m_posBuffer.EndWrite<Vector3>(dim*dim);
+        m_posBuffer[frameCount % 3].EndWrite<Vector3>(dim*dim);
         Profiler.EndSample();
         
         Profiler.BeginSample("WritePixelData");
-        NativeArray<float> colorData = m_colorBuffer.BeginWrite<float>(m_cubeIndex, dim*dim );
+        NativeArray<float> colorData = m_colorBuffer[frameCount % 3].BeginWrite<float>(m_cubeIndex, dim*dim );
         for (int i = 0; i < dim*dim; i++)
         {
             colorData[i] = m_pixels[m_cubeIndex -dim*dim + i];
         }
-        m_colorBuffer.EndWrite<float>(dim*dim);
+        m_colorBuffer[frameCount % 3].EndWrite<float>(dim*dim);
         Profiler.EndSample();
         
-        _mat.SetBuffer(InstancePosition, m_posBuffer);
-        _mat.SetBuffer(InstanceColor, m_colorBuffer);
+        _mat.SetBuffer(InstancePosition, m_posBuffer[frameCount % 3]);
+        _mat.SetBuffer(InstanceColor, m_colorBuffer[frameCount % 3]);
         
         var bounds = new Bounds(Vector3.zero, Vector3.one * 2000f);
         int cubesToDraw = m_positions.Length;
@@ -152,10 +164,17 @@ public class CubeContainerMaintainer : MonoBehaviour
     
     void OnDestroy()
     {
-        m_posBuffer?.Release();
+        for (int i = 0; i < m_posBuffer.Length; i++)
+        {
+            m_posBuffer[i]?.Release();
+            m_posBuffer[i] = null;
+            m_colorBuffer[i]?.Release();
+            m_colorBuffer[i] = null;
+        }
+
         m_posBuffer = null;
-        m_colorBuffer?.Release();
         m_colorBuffer = null;
+        
         m_positions.Dispose();
         m_pixels.Dispose();
     }
