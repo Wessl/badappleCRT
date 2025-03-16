@@ -195,7 +195,6 @@ public class TunnelHandler : MonoBehaviour
             frameToLoad++;
             m_framesLoaded++;
         }
-        // cc.dim++;
         Profiler.EndSample();
     }
 
