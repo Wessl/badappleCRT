@@ -12,7 +12,7 @@ using Random = UnityEngine.Random;
 public class CubeContainerMaintainer : MonoBehaviour
 {
     public int dim = 512;
-    private Material _mat;
+    private Material m_mat;
     private NativeArray<Vector3> m_positions;
     private NativeArray<float> m_pixels;
     private ComputeBuffer[] m_posBuffer;
@@ -20,6 +20,7 @@ public class CubeContainerMaintainer : MonoBehaviour
     private int StrideVec3;
     private int StrideFloat;
     private bool m_readyToRender;
+    private int m_zDepth = 1024;
 
     private int m_cubeIndex;
     
@@ -32,8 +33,8 @@ public class CubeContainerMaintainer : MonoBehaviour
 
     private void Awake()
     {
-        _mat = new Material(drawMeshShader);
-        _mat.enableInstancing = true;
+        m_mat = new Material(drawMeshShader);
+        m_mat.enableInstancing = true;
         StrideVec3 = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Vector3));
         StrideFloat = System.Runtime.InteropServices.Marshal.SizeOf(typeof(float));
         m_readyToRender = false;
@@ -55,18 +56,20 @@ public class CubeContainerMaintainer : MonoBehaviour
             Debug.LogError($"{nameof(totalCubes)} is negative [{totalCubes}], which probably means you tried to assign a number larger than {System.Int32.MaxValue}");
             return;
         }
+        
         m_positions = new NativeArray<Vector3>(totalCubes, Allocator.Persistent);
         m_pixels = new NativeArray<float>(totalCubes, Allocator.Persistent);
+        int bufferInstanceCount = dim * dim * m_zDepth;
         for (int i = 0; i < m_posBuffer.Length; i++)
         {
-            m_posBuffer[i] = new ComputeBuffer (totalCubes, StrideVec3, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
-            m_colorBuffer[i] = new ComputeBuffer(totalCubes, StrideFloat, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+            m_posBuffer[i] = new ComputeBuffer (bufferInstanceCount, StrideVec3, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+            m_colorBuffer[i] = new ComputeBuffer(bufferInstanceCount, StrideFloat, ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
         }
         
         // Initialize with a position far away - if stuff initializes at the origin, it creates huge "overdraw" at those pixels
         // since the camera renders quite a few pixels containing them at the beginning, put them far away :D 
-        Vector3[] defaultPositions = new Vector3[totalCubes];
-        for (int i = 0; i < totalCubes; i++)
+        Vector3[] defaultPositions = new Vector3[bufferInstanceCount];
+        for (int i = 0; i < bufferInstanceCount; i++)
         {
             defaultPositions[i] = new Vector3(10000f, 10000f, 10000f);
         }
@@ -74,11 +77,11 @@ public class CubeContainerMaintainer : MonoBehaviour
         for (int i = 0; i < m_posBuffer.Length; i++)
         {
             m_posBuffer[i].SetData(defaultPositions);
-            m_colorBuffer[i].SetData(new float[totalCubes * StrideFloat / sizeof(float)]); 
+            m_colorBuffer[i].SetData(new float[bufferInstanceCount * StrideFloat / sizeof(float)]); 
         }
         
-        _mat.SetBuffer(InstancePosition, m_posBuffer[0]);
-        _mat.SetBuffer(InstanceColor, m_colorBuffer[0]);
+        m_mat.SetBuffer(InstancePosition, m_posBuffer[0]);
+        m_mat.SetBuffer(InstanceColor, m_colorBuffer[0]);
     }
 
     public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels, int currentFrame)
@@ -136,7 +139,10 @@ public class CubeContainerMaintainer : MonoBehaviour
         
         // Write data from NativeArray into ComputeBuffer using Begin/EndWrite. Faster than using SetData(). 
         Profiler.BeginSample("WritePositionData");
-        NativeArray<Vector3> posData = m_posBuffer[frameCount % 3].BeginWrite<Vector3>(m_cubeIndex, dim*dim );
+
+        int modulatedIndex = m_cubeIndex % (m_zDepth * dim * dim);
+        Debug.Log($"modulatedIndex: {modulatedIndex}, cubeIndex: {m_cubeIndex}");
+        NativeArray<Vector3> posData = m_posBuffer[frameCount % 3].BeginWrite<Vector3>(modulatedIndex, dim*dim );
         for (int i = 0; i < dim*dim; i++)
         {
             posData[i] = m_positions[m_cubeIndex -dim*dim + i];
@@ -145,7 +151,7 @@ public class CubeContainerMaintainer : MonoBehaviour
         Profiler.EndSample();
         
         Profiler.BeginSample("WritePixelData");
-        NativeArray<float> colorData = m_colorBuffer[frameCount % 3].BeginWrite<float>(m_cubeIndex, dim*dim );
+        NativeArray<float> colorData = m_colorBuffer[frameCount % 3].BeginWrite<float>(modulatedIndex, dim*dim );
         for (int i = 0; i < dim*dim; i++)
         {
             colorData[i] = m_pixels[m_cubeIndex -dim*dim + i];
@@ -153,12 +159,12 @@ public class CubeContainerMaintainer : MonoBehaviour
         m_colorBuffer[frameCount % 3].EndWrite<float>(dim*dim);
         Profiler.EndSample();
         
-        _mat.SetBuffer(InstancePosition, m_posBuffer[frameCount % 3]);
-        _mat.SetBuffer(InstanceColor, m_colorBuffer[frameCount % 3]);
+        m_mat.SetBuffer(InstancePosition, m_posBuffer[frameCount % 3]);
+        m_mat.SetBuffer(InstanceColor, m_colorBuffer[frameCount % 3]);
         
-        var bounds = new Bounds(Vector3.zero, Vector3.one * 2000f);
+        var bounds = new Bounds(Vector3.zero, Vector3.one * 20000f);
         int cubesToDraw = m_positions.Length;
-        Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, _mat, bounds, cubesToDraw, null, ShadowCastingMode.Off, false);
+        Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, m_mat, bounds, cubesToDraw, null, ShadowCastingMode.Off, false);
         Profiler.EndSample();
     }
     
@@ -174,6 +180,7 @@ public class CubeContainerMaintainer : MonoBehaviour
 
         m_posBuffer = null;
         m_colorBuffer = null;
+        m_mat = null;
         
         m_positions.Dispose();
         m_pixels.Dispose();
