@@ -42,7 +42,8 @@ Shader "Custom/InstancedCubes"
                 o.worldPos = worldPosition.xyz;
                 o.vertex = UnityObjectToClipPos(worldPosition);
                 o.normal = UnityObjectToWorldNormal(v.normal);
-                o.color = _InstanceColor[id] / 255.0;
+                o.color.xyz = _InstanceColor[id] / 255.0;
+                o.color.a = 1;
                 return o;
             }
 

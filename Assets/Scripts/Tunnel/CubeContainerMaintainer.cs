@@ -72,7 +72,7 @@ public class CubeContainerMaintainer : MonoBehaviour
         }
         
         m_posBuffer.SetData(defaultPositions);
-        m_colorBuffer.SetData(new float[bufferInstanceCount * StrideFloat / sizeof(float)]); 
+        //m_colorBuffer.SetData(]); 
         
         
         m_mat.SetBuffer(InstancePosition, m_posBuffer);
@@ -159,9 +159,8 @@ public class CubeContainerMaintainer : MonoBehaviour
         m_mat.SetBuffer(InstancePosition, m_posBuffer);
         m_mat.SetBuffer(InstanceColor, m_colorBuffer);
         
-        var bounds = new Bounds(Vector3.zero, Vector3.one * 20000f);
-        int cubesToDraw = m_positions.Length;
-        Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, m_mat, bounds, cubesToDraw, null, ShadowCastingMode.Off, false);
+        var bounds = new Bounds(Vector3.zero, Vector3.one * 40000f);
+        Graphics.DrawMeshInstancedProcedural(cubeMesh, 0, m_mat, bounds, m_posBuffer.count, null, ShadowCastingMode.Off, false);
         Profiler.EndSample();
     }
     
