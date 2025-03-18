@@ -11,6 +11,7 @@ using Random = UnityEngine.Random;
 
 public class CubeContainerMaintainer : MonoBehaviour
 {
+    
     public int dim = 512;
     private Material m_mat;
     private NativeArray<Vector3> m_positions;
@@ -80,6 +81,7 @@ public class CubeContainerMaintainer : MonoBehaviour
 
     public void GenerateCubeInfo(NativeArray<float> modifiedPixels, byte[] pixels, int currentFrame)
     {
+        Profiler.BeginSample("GenerateCubeInfo");
         int totalCubesThisFrame = dim * dim;
         var positionsNative = new NativeArray<Vector3>(totalCubesThisFrame, Allocator.TempJob);
         
@@ -105,6 +107,7 @@ public class CubeContainerMaintainer : MonoBehaviour
         
         // We need it for posterity. :)
         m_cubeIndex += dim * dim;
+        Profiler.EndSample();
     }
 
     [BurstCompile]

@@ -114,9 +114,12 @@ public class TunnelHandler : MonoBehaviour
         if (dynamicallyLoadFrames && (m_currFrame >= (m_framesLoaded))) DynamicFrameLoad();
         int dim = cc.dim;
        
+        Profiler.BeginSample("GetJpegTextureData");
         var jpeg = _jpegs[m_currFrame + framesToLoadAhead - m_framesLoaded];
         var pixels = jpeg.GetRawTextureData();
+        Profiler.EndSample();
         
+        Profiler.BeginSample("SampleImageJob");
         var pixelsNative = new NativeArray<byte>(pixels, Allocator.TempJob);
         var modifiedPixelsNative = new NativeArray<float>(dim*dim, Allocator.TempJob);
 
@@ -130,6 +133,7 @@ public class TunnelHandler : MonoBehaviour
 
         JobHandle jobHandle = job.Schedule(dim*dim, 512);
         jobHandle.Complete();
+        Profiler.EndSample();
         
         m_currFrame++;
         cc.GenerateCubeInfo(modifiedPixelsNative, pixels, m_currFrame);
