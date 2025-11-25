@@ -84,7 +84,7 @@ public class WordleFrameHandler : MonoBehaviour
                 if (rawLineParts[0].Length != 12)
                     continue;
                 
-                if (rawLineParts[0].All(c => !char.IsLetterOrDigit(c)))
+                if (!rawLineParts[0].All(c => char.IsLetterOrDigit(c)))
                     continue;
                 
                 if (m_wordDict.ContainsKey(rawLineParts[0]))
