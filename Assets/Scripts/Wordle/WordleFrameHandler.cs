@@ -23,6 +23,9 @@ public class WordleFrameHandler : MonoBehaviour
     private float[] m_modifiedPixels;
 
     public WordlePresenter m_presenter;
+
+    private EnglishDictionary m_dict;
+    public Dictionary<string, string> m_words;
     private AudioSource m_audio;
 
     private int m_totalFrames;
@@ -31,7 +34,6 @@ public class WordleFrameHandler : MonoBehaviour
     private Vector2Int m_textureSize;
     private long m_totalPixelsShown;
     
-    Dictionary<string,string> m_wordDict = new Dictionary<string, string>();
 
     
     private void Awake()
@@ -48,6 +50,8 @@ public class WordleFrameHandler : MonoBehaviour
         PrintBadAppleLog();
         m_audio = FindFirstObjectByType<AudioSource>();
         m_presenter = FindFirstObjectByType<WordlePresenter>();
+        m_dict = FindFirstObjectByType<EnglishDictionary>();
+        m_words = m_dict.GetWordDict();
         m_hasStartedPlayingVideo = false;
         m_isFinished = false;
         m_currFrame = 0;
@@ -61,48 +65,10 @@ public class WordleFrameHandler : MonoBehaviour
         m_textureSize = new Vector2Int(sampleTexture.width, sampleTexture.height);
         m_presenter.Frames = m_totalFrames;
         
-        // go through the english dictionary
-        TextAsset englishDictionary = Resources.Load<TextAsset>("englishDictionary");
-        PrepareWords(englishDictionary);
         // cc.SetupBuffers();
     }
 
-    void PrepareWords(TextAsset englishDictionary)
-    {
-        Profiler.BeginSample("EnglishDict.Read");
-        using (System.IO.StringReader reader = new System.IO.StringReader(englishDictionary.text))
-        {
-            string rawLine;
-            while ((rawLine = reader.ReadLine()) != null)
-            {
-                if (string.IsNullOrEmpty(rawLine))
-                    continue;
-                
-                string[] rawLineParts = rawLine.Split(',', 3);
-                if (rawLineParts.Length < 3 || rawLineParts[0] is null ||rawLineParts[2] is null)
-                    continue;
 
-                if (rawLineParts[0].Length != 12)
-                    continue;
-                
-                if (!rawLineParts[0].All(c => char.IsLetterOrDigit(c)))
-                    continue;
-                
-                if (m_wordDict.ContainsKey(rawLineParts[0]))
-                    continue; 
-                
-                m_wordDict.Add(rawLineParts[0], rawLineParts[2]);
-            }
-        }
-
-        Debug.Log($"Amount of long words: {m_wordDict.Count}");
-        foreach (var longWordDefinitions in m_wordDict)
-        {
-            Debug.Log($"{longWordDefinitions.Key} : {longWordDefinitions.Value}");
-        }
-
-        Profiler.EndSample();
-    }
 
     int TryFindFileAmount()
     {
@@ -174,8 +140,8 @@ public class WordleFrameHandler : MonoBehaviour
         
         m_currFrame++;
 
-        int randomWordIndex = Random.Range(0, m_wordDict.Count);
-        var key = m_wordDict.Keys.ToList()[randomWordIndex];
+        int randomWordIndex = Random.Range(0, m_words.Count);
+        var key = m_words.Keys.ToList()[randomWordIndex];
         m_presenter.CreateRandomWordleSetup(key);
         m_presenter.GenerateWordleFrame(modifiedPixelsNative, m_currFrame);
         pixelsNative.Dispose();

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -28,6 +30,9 @@ public class WordlePresenter : MonoBehaviour
     private GameObject m_canvasGameObject;
     [SerializeField] private GameObject m_letterBox;
 
+    private Dictionary<string, string> m_words;
+    private Dictionary<string,string>.KeyCollection m_keys;
+
     private TextMeshProUGUI[,] m_grid;
     private Color m_wordleGreen = Color.clear;
     private Color m_wordleOrange = Color.clear;
@@ -41,6 +46,8 @@ public class WordlePresenter : MonoBehaviour
     {
         m_grid = new TextMeshProUGUI[m_dimension, m_dimension];
         m_canvasGameObject = GetComponentInChildren<Canvas>().gameObject;
+        m_words = FindFirstObjectByType<EnglishDictionary>().GetWordDict();
+        m_keys = m_words.Keys;
         
         // le colour
         ColorUtility.TryParseHtmlString("#538D4E",out m_wordleGreen);
@@ -83,7 +90,8 @@ public class WordlePresenter : MonoBehaviour
         bool[] correctPositions = new bool[m_dimension];
         for (int i = 0; i < m_dimension; i++)
         {
-            Debug.Log($"this is the word: {word}");
+            Debug.Log($"this is the word to guess: {word}");
+            string guessedWord = GetRandomWord();
             for (int j = 0; j < m_dimension; j++)
             {
                 string correctLetter = word[j].ToString().ToUpper();
@@ -92,7 +100,7 @@ public class WordlePresenter : MonoBehaviour
                 if (correctPositions[j])
                     guessedLetter = correctLetter;
                 else
-                    guessedLetter = GetRandomLetter().ToUpper();
+                    guessedLetter = guessedWord[j].ToString().ToUpper();
                     
                 Debug.Log($"correct letter here: {correctLetter}, guessedletter: {guessedLetter}");
                 m_grid[i, j].text = guessedLetter;
@@ -119,7 +127,7 @@ public class WordlePresenter : MonoBehaviour
 
     private string GetRandomWord()
     {
-        // TODO
-        return "";
+        int wordIndex = Random.Range(0, m_keys.Count - 1);
+        return m_keys.ToList()[wordIndex];
     }
 }
