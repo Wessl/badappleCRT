@@ -69,8 +69,7 @@ public class WordleFrameHandler : MonoBehaviour
         Profiler.BeginSample("EnglishDict.Read");
         List<string> words = new List<string>();
         List<string> definitions = new List<string>();
-        List<string> longWords = new List<string>();
-        List<string> longWordDefinitions = new List<string>();
+        Dictionary<string,string> longWords = new Dictionary<string, string>();
         using (System.IO.StringReader reader = new System.IO.StringReader(englishDictionary.text))
         {
             string rawLine;
@@ -79,7 +78,7 @@ public class WordleFrameHandler : MonoBehaviour
                 if (string.IsNullOrEmpty(rawLine))
                     continue;
                 
-                string[] rawLineParts = rawLine.Split(',');
+                string[] rawLineParts = rawLine.Split(',', 3);
                 if (rawLineParts.Length < 3 || rawLineParts[0] is null ||rawLineParts[2] is null)
                     continue;
                     
@@ -89,23 +88,24 @@ public class WordleFrameHandler : MonoBehaviour
                 // todo 1 - make this length configurable?
                 // todo 2 - make this run in the browser, letting people pick a length of word and have it render like that
                 // todo 3 - remove duplicates from words - use some kind of set? 
-                // todo 4 - combine back after 2nd column, so that descriptions with commas dont get cut off? we know there are only three columns max, maybe we can use that? 
-                if (rawLineParts[0].Length == 14)
+                if (rawLineParts[0].Length == 12)
                 {
                     if (rawLineParts[0].All(c => char.IsLetterOrDigit(c)))
                     {
-                        longWords.Add(rawLineParts[0]);
-                        longWordDefinitions.Add(rawLineParts[2]);
+                        if (longWords.ContainsKey(rawLineParts[0]))
+                            // It's a duplicate, we don't want that
+                            continue; 
+                        
+                        longWords.Add(rawLineParts[0], rawLineParts[2]);
                     }
                 }
             }
         }
 
-        // Debug.Log($"did we find any good words? {words[100]} - {definitions[100]}, {words[10000]} - {definitions[10000]}, {words[^1]} - {definitions[^1]}");
         Debug.Log($"Amount of long words: {longWords.Count}");
-        for (var index = 0; index < longWords.Count; index++)
+        foreach (var longWordDefinitions in longWords)
         {
-            Debug.Log($"here's a long word: {longWords[index]} - {longWordDefinitions[index]}");
+            Debug.Log($"{longWordDefinitions.Key} : {longWordDefinitions.Value}");
         }
 
         Profiler.EndSample();
