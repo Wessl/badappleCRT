@@ -172,6 +172,7 @@ public class WordleFrameHandler : MonoBehaviour
         Profiler.EndSample();
         
         m_currFrame++;
+        m_presenter.CreateRandomWordleSetup();
         m_presenter.GenerateWordleFrame(modifiedPixelsNative, m_currFrame);
         pixelsNative.Dispose();
         
@@ -181,7 +182,6 @@ public class WordleFrameHandler : MonoBehaviour
 
     bool CanStartPlayingVideo()
     {
-        return false;
         if (Time.time > m_platformVideoDelay)
         {
             m_hasStartedPlayingVideo = true;
