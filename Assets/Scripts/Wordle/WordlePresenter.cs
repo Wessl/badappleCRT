@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -31,7 +32,7 @@ public class WordlePresenter : MonoBehaviour
     [SerializeField] private GameObject m_letterBox;
 
     private Dictionary<string, string> m_words;
-    private Dictionary<string,string>.KeyCollection m_keys;
+    private List<string> m_keys;
 
     private TextMeshProUGUI[,] m_grid;
     private Color m_wordleGreen = Color.clear;
@@ -47,7 +48,7 @@ public class WordlePresenter : MonoBehaviour
         m_grid = new TextMeshProUGUI[m_dimension, m_dimension];
         m_canvasGameObject = GetComponentInChildren<Canvas>().gameObject;
         m_words = FindFirstObjectByType<EnglishDictionary>().GetWordDict();
-        m_keys = m_words.Keys;
+        m_keys = m_words.Keys.ToList();
         
         // le colour
         ColorUtility.TryParseHtmlString("#538D4E",out m_wordleGreen);
@@ -85,24 +86,24 @@ public class WordlePresenter : MonoBehaviour
     }
 
     // just for testing
+    HashSet<string> m_guessedWords = new HashSet<string>();
+    List<string> m_shuffledWords;
+
     public void CreateRandomWordleSetup(string word)
     {
+        m_guessedWords.Clear();
+        m_shuffledWords = m_keys.OrderBy(_ => rng.Next()).ToList();
+        
         bool[] correctPositions = new bool[m_dimension];
         for (int i = 0; i < m_dimension; i++)
         {
-            Debug.Log($"this is the word to guess: {word}");
-            string guessedWord = GetRandomWord();
+            string guessedWord = GetRandomWordGivenGuesses(word, correctPositions);
             for (int j = 0; j < m_dimension; j++)
             {
                 string correctLetter = word[j].ToString().ToUpper();
 
-                string guessedLetter;
-                if (correctPositions[j])
-                    guessedLetter = correctLetter;
-                else
-                    guessedLetter = guessedWord[j].ToString().ToUpper();
+                string guessedLetter = guessedWord[j].ToString().ToUpper();
                     
-                Debug.Log($"correct letter here: {correctLetter}, guessedletter: {guessedLetter}");
                 m_grid[i, j].text = guessedLetter;
                 Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
                 if (correctLetter == guessedLetter)
@@ -110,7 +111,7 @@ public class WordlePresenter : MonoBehaviour
                     correctPositions[j] = true;
                     image.color = m_wordleGreen;
                 }
-                else if (word.Contains(guessedLetter))
+                else if (word.Contains(guessedLetter, StringComparison.InvariantCultureIgnoreCase))
                     image.color = m_wordleOrange;
                 else
                     image.color = m_wordleGrey;
@@ -129,5 +130,35 @@ public class WordlePresenter : MonoBehaviour
     {
         int wordIndex = Random.Range(0, m_keys.Count - 1);
         return m_keys.ToList()[wordIndex];
+    }
+
+    private static System.Random rng = new System.Random();
+    private string GetRandomWordGivenGuesses(string correctWord, bool[] correctGuesses)
+    {
+        if (m_guessedWords.Contains(correctWord))
+            return correctWord;
+        for (int i = 0; i < m_shuffledWords.Count; i++)
+        {
+            string word = m_shuffledWords[i];
+            if (m_guessedWords.Contains(word))
+                continue;
+            bool allCorrect = true;
+            for (int j = 0; j < word.Length; j++)
+            {
+                if (correctGuesses[j] && word[j] != correctWord[j])
+                {
+                    allCorrect = false;
+                    break;
+                }
+            }
+
+            if (allCorrect)
+            {
+                m_guessedWords.Add(word);
+                return word;
+            }
+        }
+
+        return "ballsack";
     }
 }
