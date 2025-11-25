@@ -2,6 +2,7 @@ using TMPro;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 public class WordlePresenter : MonoBehaviour
@@ -28,14 +29,23 @@ public class WordlePresenter : MonoBehaviour
     [SerializeField] private GameObject m_letterBox;
 
     private TextMeshProUGUI[,] m_grid;
+    private Color m_wordleGreen = Color.clear;
+    private Color m_wordleOrange = Color.clear;
+    private Color m_wordleGrey = Color.clear;
     
     // wordle green: 538D4E
     // wordle yellow: B59F3B
+    // wordle grey: 787C7E
 
     void Start()
     {
         m_grid = new TextMeshProUGUI[m_dimension, m_dimension];
         m_canvasGameObject = GetComponentInChildren<Canvas>().gameObject;
+        
+        // le colour
+        ColorUtility.TryParseHtmlString("#538D4E",out m_wordleGreen);
+        ColorUtility.TryParseHtmlString("#B59F3B",out m_wordleOrange);
+        ColorUtility.TryParseHtmlString("#787C7E",out m_wordleGrey);
         
         // set up grid?
         Rect canvasRect = m_canvasGameObject.GetComponent<RectTransform>().rect;
@@ -68,8 +78,48 @@ public class WordlePresenter : MonoBehaviour
     }
 
     // just for testing
-    public void CreateRandomWordleSetup()
+    public void CreateRandomWordleSetup(string word)
     {
-        
+        bool[] correctPositions = new bool[m_dimension];
+        for (int i = 0; i < m_dimension; i++)
+        {
+            Debug.Log($"this is the word: {word}");
+            for (int j = 0; j < m_dimension; j++)
+            {
+                string correctLetter = word[j].ToString().ToUpper();
+
+                string guessedLetter;
+                if (correctPositions[j])
+                    guessedLetter = correctLetter;
+                else
+                    guessedLetter = GetRandomLetter().ToUpper();
+                    
+                Debug.Log($"correct letter here: {correctLetter}, guessedletter: {guessedLetter}");
+                m_grid[i, j].text = guessedLetter;
+                Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
+                if (correctLetter == guessedLetter)
+                {
+                    correctPositions[j] = true;
+                    image.color = m_wordleGreen;
+                }
+                else if (word.Contains(guessedLetter))
+                    image.color = m_wordleOrange;
+                else
+                    image.color = m_wordleGrey;
+            }   
+        }
+    }
+    
+    string m_uppercaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    private string GetRandomLetter()
+    {
+        return m_uppercaseLetters[Random.Range(0, m_uppercaseLetters.Length - 1)].ToString();
+    }
+
+    private string GetRandomWord()
+    {
+        // TODO
+        return "";
     }
 }

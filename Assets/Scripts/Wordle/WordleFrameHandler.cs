@@ -6,6 +6,7 @@ using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Profiling;
+using Random = UnityEngine.Random;
 
 public class WordleFrameHandler : MonoBehaviour
 {
@@ -172,7 +173,10 @@ public class WordleFrameHandler : MonoBehaviour
         Profiler.EndSample();
         
         m_currFrame++;
-        m_presenter.CreateRandomWordleSetup();
+
+        int randomWordIndex = Random.Range(0, m_wordDict.Count);
+        var key = m_wordDict.Keys.ToList()[randomWordIndex];
+        m_presenter.CreateRandomWordleSetup(key);
         m_presenter.GenerateWordleFrame(modifiedPixelsNative, m_currFrame);
         pixelsNative.Dispose();
         
