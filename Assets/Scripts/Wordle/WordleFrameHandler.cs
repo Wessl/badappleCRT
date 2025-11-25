@@ -29,6 +29,8 @@ public class WordleFrameHandler : MonoBehaviour
 
     private Vector2Int m_textureSize;
     private long m_totalPixelsShown;
+    
+    Dictionary<string,string> m_wordDict = new Dictionary<string, string>();
 
     
     private void Awake()
@@ -67,9 +69,6 @@ public class WordleFrameHandler : MonoBehaviour
     void PrepareWords(TextAsset englishDictionary)
     {
         Profiler.BeginSample("EnglishDict.Read");
-        List<string> words = new List<string>();
-        List<string> definitions = new List<string>();
-        Dictionary<string,string> longWords = new Dictionary<string, string>();
         using (System.IO.StringReader reader = new System.IO.StringReader(englishDictionary.text))
         {
             string rawLine;
@@ -81,29 +80,22 @@ public class WordleFrameHandler : MonoBehaviour
                 string[] rawLineParts = rawLine.Split(',', 3);
                 if (rawLineParts.Length < 3 || rawLineParts[0] is null ||rawLineParts[2] is null)
                     continue;
-                    
-                words.Add(rawLineParts[0]);
-                definitions.Add(rawLineParts[2]);
+
+                if (rawLineParts[0].Length != 12)
+                    continue;
                 
-                // todo 1 - make this length configurable?
-                // todo 2 - make this run in the browser, letting people pick a length of word and have it render like that
-                // todo 3 - remove duplicates from words - use some kind of set? 
-                if (rawLineParts[0].Length == 12)
-                {
-                    if (rawLineParts[0].All(c => char.IsLetterOrDigit(c)))
-                    {
-                        if (longWords.ContainsKey(rawLineParts[0]))
-                            // It's a duplicate, we don't want that
-                            continue; 
-                        
-                        longWords.Add(rawLineParts[0], rawLineParts[2]);
-                    }
-                }
+                if (rawLineParts[0].All(c => !char.IsLetterOrDigit(c)))
+                    continue;
+                
+                if (m_wordDict.ContainsKey(rawLineParts[0]))
+                    continue; 
+                
+                m_wordDict.Add(rawLineParts[0], rawLineParts[2]);
             }
         }
 
-        Debug.Log($"Amount of long words: {longWords.Count}");
-        foreach (var longWordDefinitions in longWords)
+        Debug.Log($"Amount of long words: {m_wordDict.Count}");
+        foreach (var longWordDefinitions in m_wordDict)
         {
             Debug.Log($"{longWordDefinitions.Key} : {longWordDefinitions.Value}");
         }
