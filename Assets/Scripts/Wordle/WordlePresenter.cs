@@ -25,7 +25,7 @@ public class WordlePresenter : MonoBehaviour
     // we also need to find a bigass library of words of the size that we decide to use. 
     public int Frames { get; set; }
     public int Dimension => m_dimension;
-    private int m_dimension = 12;
+    private int m_dimension = 8;
 
     private int m_gridSpacing = 10;
     
@@ -46,7 +46,7 @@ public class WordlePresenter : MonoBehaviour
 
     void Start()
     {
-        m_grid = new TextMeshProUGUI[m_dimension, m_dimension];
+        m_grid = new TextMeshProUGUI[m_dimension+1, m_dimension];
         m_canvasGameObject = GetComponentInChildren<Canvas>().gameObject;
         m_words = FindFirstObjectByType<EnglishDictionary>().GetWordDict();
         m_keys = m_words.Keys.ToList();
@@ -64,9 +64,9 @@ public class WordlePresenter : MonoBehaviour
         int x = startX;
         int startY = (int)(canvasRect.height / 2 - letterBoxRect.height / 2 - m_gridSpacing);
         int y = startY;
-        for (int i = 0; i < m_dimension; i++)
+        for (int i = 0; i < m_grid.GetLength(0); i++)
         {
-            for (int j = 0; j < m_dimension; j++)
+            for (int j = 0; j < m_grid.GetLength(1); j++)
             {
                 GameObject o = Instantiate(m_letterBox, new Vector3(x, y, 0), quaternion.identity);
                 o.transform.SetParent(m_canvasGameObject.transform, false);
@@ -91,24 +91,101 @@ public class WordlePresenter : MonoBehaviour
         // reason why we dont use green is because then we would need to use different words on different lines, which we can't do. 
         // actually we can totally do that nevermind i am dumb. but yeah, we should use yellow until we know we can continue all the way down
         // only then should we use green. that should be doable
+        
+        // TODO 1. don't use the same guess more than once 
+        // TODO 2. go through all the words first once, to know all the positions - basically positionsThatMustBeCovered[][] <- 2 dimensions
+        // cont - then find out a word that should be the "correct" word - needs to satisfy all the other guesses
+        // then start making guesses against the "correct" word that is guaranteed to work with as many words as possible. 
         Profiler.BeginSample("GenerateWordleFrame");
-        for (int i = 0; i < m_dimension; i++)
+        bool[] positionsThatMustBeCovered = new bool[m_dimension];
+        m_shuffledWords = m_keys.OrderBy(_ => rng.Next()).Select(w => w.ToUpper()).ToList();
+        
+        string correctWord = m_shuffledWords[Random.Range(0, m_shuffledWords.Count - 1)];
+        for (int i = 0; i <  m_grid.GetLength(0); i++)
         {
+            for (int j = 0; j < m_grid.GetLength(1); j++)
+            {
+                if (i != m_dimension)
+                {
+                    if (newPixels[newPixels.Length - 1 - (i * m_dimension + j)] < 0.5f)
+                        positionsThatMustBeCovered[j] = true;
+                    else
+                        positionsThatMustBeCovered[j] = false;
+                }
+            }
+            
+            string fittingWord = GetFittingWordleWord(positionsThatMustBeCovered, correctWord);
+            
             for (int j = 0; j < m_dimension; j++)
             {
-                // 1. Should this frame be covered? 
-                // - do we do that using *all* pixels on this square, or just the middle? i would say all.
-                
-                // todo - don't do GetComponent here, make a class that has both the text and Image accessible directly. 
                 Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
-                if (newPixels[newPixels.Length - 1 - ( i * m_dimension + j )] < 0.5f)
-                    image.color = m_wordleGrey;
-                else
+                if (i == m_dimension)
+                {
+                    m_grid[i, j].text = correctWord.ToString()[j].ToString();
                     image.color = m_wordleGreen;
+                    continue;
+                }
+                // todo - don't do GetComponent here, make a class that has both the text and Image accessible directly. 
+                m_grid[i, j].text = fittingWord[j].ToString();
+                if (positionsThatMustBeCovered[j] && fittingWord[j] == correctWord[j])
+                {
+                    image.color = m_wordleGreen;
+                } else if (positionsThatMustBeCovered[j])
+                {
+                    image.color = m_wordleOrange;
+                }
+                else
+                {
+                    image.color = m_wordleGrey;
+                }
             }
+            
         }
         Profiler.EndSample();
     }
+
+    private string GetFittingWordleWord(bool[] positionsThatMustBeCovered, string correctWord)
+    {
+        Profiler.BeginSample("GetFittingWordleWord");
+        
+        var correctChars = new HashSet<char>(correctWord); 
+        for (int i = 0; i < m_shuffledWords.Count; i++)
+        {
+            string wordToGuess = m_shuffledWords[i];
+            if (wordToGuess == correctWord)
+                continue; // Word to guess can't be the same as the correct word, unless it's the last one!
+            bool wordPasses = true;
+            for (int j = 0; j < wordToGuess.Length; j++)
+            {
+                if (positionsThatMustBeCovered[j])
+                {
+                    if (!correctChars.Contains(wordToGuess[j]))
+                    {
+                        wordPasses = false;
+                        break;
+                    }
+                }
+                else if(!positionsThatMustBeCovered[j])
+                {
+                    if (correctChars.Contains(wordToGuess[j]))
+                    {
+                        wordPasses = false;
+                        break;
+                    }
+                }
+            }
+
+            if (wordPasses)
+            {
+                return wordToGuess;
+            }
+        }
+        
+        Profiler.EndSample();
+
+        return "NOWORDSFOUND";
+    }
+    
 
     // just for testing
     HashSet<string> m_guessedWords = new HashSet<string>();

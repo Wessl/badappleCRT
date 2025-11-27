@@ -7,6 +7,7 @@ using UnityEngine.Profiling;
 public class EnglishDictionary : MonoBehaviour
 {
     Dictionary<string,string> m_wordDict = new Dictionary<string, string>();
+    public WordlePresenter m_presenter;
 
     public Dictionary<string, string> GetWordDict()
     {
@@ -33,7 +34,7 @@ public class EnglishDictionary : MonoBehaviour
                 if (rawLineParts.Length < 3 || rawLineParts[0] is null ||rawLineParts[2] is null)
                     continue;
 
-                if (rawLineParts[0].Length != 12)
+                if (rawLineParts[0].Length != m_presenter.Dimension)
                     continue;
                 
                 if (!rawLineParts[0].All(c => char.IsLetterOrDigit(c)))

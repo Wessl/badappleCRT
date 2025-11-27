@@ -427,7 +427,7 @@ MonoBehaviour:
   _jpegs: []
   dynamicallyLoadFrames: 1
   framesToLoadAhead: 10
-  m_presenter: {fileID: 0}
+  m_presenter: {fileID: 333064508}
 --- !u!4 &333973472
 Transform:
   m_ObjectHideFlags: 0
@@ -564,6 +564,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa0db2842e573e4b95497b249e5ff24, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_presenter: {fileID: 333064508}
 --- !u!4 &1295116662
 Transform:
   m_ObjectHideFlags: 0
