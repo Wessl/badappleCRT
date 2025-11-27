@@ -5,6 +5,7 @@ using TMPro;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
@@ -83,6 +84,30 @@ public class WordlePresenter : MonoBehaviour
     public void GenerateWordleFrame(NativeArray<float> newPixels, int currentFrame)
     {
         // todo - do stuff with this
+        // todo - configurable word size, make everything adapt to word size, e.g. put stuff in middle
+        // todo - we have a funny wordle solver now, which is kinda cool
+        // todo - but what we want is to make a bad apple thingy instead. which should not be too hard
+        // todo - we can use similar concepts... either find words that are yellow in the spots that we care about, in order to paint the picture
+        // reason why we dont use green is because then we would need to use different words on different lines, which we can't do. 
+        // actually we can totally do that nevermind i am dumb. but yeah, we should use yellow until we know we can continue all the way down
+        // only then should we use green. that should be doable
+        Profiler.BeginSample("GenerateWordleFrame");
+        for (int i = 0; i < m_dimension; i++)
+        {
+            for (int j = 0; j < m_dimension; j++)
+            {
+                // 1. Should this frame be covered? 
+                // - do we do that using *all* pixels on this square, or just the middle? i would say all.
+                
+                // todo - don't do GetComponent here, make a class that has both the text and Image accessible directly. 
+                Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
+                if (newPixels[newPixels.Length - 1 - ( i * m_dimension + j )] < 0.5f)
+                    image.color = m_wordleGrey;
+                else
+                    image.color = m_wordleGreen;
+            }
+        }
+        Profiler.EndSample();
     }
 
     // just for testing

@@ -142,7 +142,7 @@ public class WordleFrameHandler : MonoBehaviour
 
         int randomWordIndex = Random.Range(0, m_words.Count);
         var key = m_words.Keys.ToList()[randomWordIndex];
-        m_presenter.CreateRandomWordleSetup(key);
+        // m_presenter.CreateRandomWordleSetup(key);
         m_presenter.GenerateWordleFrame(modifiedPixelsNative, m_currFrame);
         pixelsNative.Dispose();
         
