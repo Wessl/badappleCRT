@@ -27,6 +27,8 @@ public class WordlePresenter : MonoBehaviour
     private Color m_wordleGreen = Color.clear;
     private Color m_wordleOrange = Color.clear;
     private Color m_wordleGrey = Color.clear;
+
+    private bool[] m_positionsThatMustBeCovered;
     
     // wordle green: 538D4E
     // wordle yellow: B59F3B
@@ -38,6 +40,7 @@ public class WordlePresenter : MonoBehaviour
         m_canvasGameObject = GetComponentInChildren<Canvas>().gameObject;
         m_words = FindFirstObjectByType<EnglishDictionary>().GetWordDict();
         m_keys = m_words.Keys.ToList();
+        m_positionsThatMustBeCovered = new bool[m_dimension];
         
         // le colour
         ColorUtility.TryParseHtmlString("#538D4E",out m_wordleGreen);
@@ -76,7 +79,7 @@ public class WordlePresenter : MonoBehaviour
         // cont - then find out a word that should be the "correct" word - needs to satisfy all the other guesses
         // then start making guesses against the "correct" word that is guaranteed to work with as many words as possible. 
         Profiler.BeginSample("GenerateWordleFrame");
-        bool[] positionsThatMustBeCovered = new bool[m_dimension];
+        
         m_shuffledWords = m_keys.OrderBy(_ => rng.Next()).Select(w => w.ToUpper()).ToList();
         
         string correctWord = m_shuffledWords[Random.Range(0, m_shuffledWords.Count - 1)];
@@ -88,13 +91,13 @@ public class WordlePresenter : MonoBehaviour
                 if (i != m_dimension)
                 {
                     if (newPixels[newPixels.Length - 1 - (i * m_dimension + j)] < 0.5f)
-                        positionsThatMustBeCovered[j] = true;
+                        m_positionsThatMustBeCovered[j] = true;
                     else
-                        positionsThatMustBeCovered[j] = false;
+                        m_positionsThatMustBeCovered[j] = false;
                 }
             }
             
-            string fittingWord = GetFittingWordleWord(positionsThatMustBeCovered, correctWord, guessedWords);
+            string fittingWord = GetFittingWordleWord(m_positionsThatMustBeCovered, correctWord, guessedWords);
             guessedWords.Add(fittingWord);
             for (int j = 0; j < m_dimension; j++)
             {
@@ -107,10 +110,10 @@ public class WordlePresenter : MonoBehaviour
                 }
                 // todo - don't do GetComponent here, make a class that has both the text and Image accessible directly. 
                 m_grid[i, j].text = fittingWord[j].ToString();
-                if (positionsThatMustBeCovered[j] && fittingWord[j] == correctWord[j])
+                if (m_positionsThatMustBeCovered[j] && fittingWord[j] == correctWord[j])
                 {
                     image.color = m_wordleGreen;
-                } else if (positionsThatMustBeCovered[j])
+                } else if (m_positionsThatMustBeCovered[j])
                 {
                     image.color = m_wordleOrange;
                 }
