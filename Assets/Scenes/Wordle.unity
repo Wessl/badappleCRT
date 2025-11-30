@@ -426,7 +426,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _jpegs: []
   dynamicallyLoadFrames: 1
-  framesToLoadAhead: 10
+  framesToLoadAhead: 1
   m_presenter: {fileID: 333064508}
 --- !u!4 &333973472
 Transform:

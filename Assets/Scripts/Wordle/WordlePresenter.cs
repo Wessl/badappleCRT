@@ -11,18 +11,6 @@ using Random = UnityEngine.Random;
 
 public class WordlePresenter : MonoBehaviour
 {
-    // todo - basically, i am thinking of having a 20x20 display like wordle
-    // and every frame that's displayed has to be a legit word, that's filled in
-    // legitimately. now that I think about it, the word itself probably doesn't matter too much... 
-    // although it would be cool if it was solved at the end of each frame...? 
-    // and for extra credit, use the different colors somehow? like... either use the colors as a form of aliasing
-    // OH! once we know we will have a completely green line below us, only then should we use green, and then keep
-    // using green downwards, because in a real game of wordle, you would never (well, i wouldn't at least) try a different
-    // letter there. but for everything that is not a complete line down, like a far edge of a circle shape, that would 
-    // have to be yellow.  
-    // does it make sense to require you to have a yellow occurance of the letter somewhere before it being green? no, 
-    // not really. 
-    // we also need to find a bigass library of words of the size that we decide to use. 
     public int Frames { get; set; }
     public int Dimension => m_dimension;
     private int m_dimension = 8;
@@ -59,10 +47,10 @@ public class WordlePresenter : MonoBehaviour
         // set up grid?
         Rect canvasRect = m_canvasGameObject.GetComponent<RectTransform>().rect;
         Rect letterBoxRect = m_letterBox.GetComponent<RectTransform>().rect;
-        int startX = (int)(- canvasRect.width / 2 + letterBoxRect.width / 2 + m_gridSpacing);
+        int startX = (int)(- letterBoxRect.width * m_dimension / 2 + m_gridSpacing);
         Debug.Log($"startX: {startX}");
         int x = startX;
-        int startY = (int)(canvasRect.height / 2 - letterBoxRect.height / 2 - m_gridSpacing);
+        int startY = (int)(letterBoxRect.height * m_dimension / 2 + letterBoxRect.height / 2 - m_gridSpacing);
         int y = startY;
         for (int i = 0; i < m_grid.GetLength(0); i++)
         {
@@ -83,15 +71,6 @@ public class WordlePresenter : MonoBehaviour
 
     public void GenerateWordleFrame(NativeArray<float> newPixels, int currentFrame)
     {
-        // todo - do stuff with this
-        // todo - configurable word size, make everything adapt to word size, e.g. put stuff in middle
-        // todo - we have a funny wordle solver now, which is kinda cool
-        // todo - but what we want is to make a bad apple thingy instead. which should not be too hard
-        // todo - we can use similar concepts... either find words that are yellow in the spots that we care about, in order to paint the picture
-        // reason why we dont use green is because then we would need to use different words on different lines, which we can't do. 
-        // actually we can totally do that nevermind i am dumb. but yeah, we should use yellow until we know we can continue all the way down
-        // only then should we use green. that should be doable
-        
         // TODO 1. don't use the same guess more than once 
         // TODO 2. go through all the words first once, to know all the positions - basically positionsThatMustBeCovered[][] <- 2 dimensions
         // cont - then find out a word that should be the "correct" word - needs to satisfy all the other guesses
@@ -101,6 +80,7 @@ public class WordlePresenter : MonoBehaviour
         m_shuffledWords = m_keys.OrderBy(_ => rng.Next()).Select(w => w.ToUpper()).ToList();
         
         string correctWord = m_shuffledWords[Random.Range(0, m_shuffledWords.Count - 1)];
+        List<string> guessedWords = new List<string>();
         for (int i = 0; i <  m_grid.GetLength(0); i++)
         {
             for (int j = 0; j < m_grid.GetLength(1); j++)
@@ -114,8 +94,8 @@ public class WordlePresenter : MonoBehaviour
                 }
             }
             
-            string fittingWord = GetFittingWordleWord(positionsThatMustBeCovered, correctWord);
-            
+            string fittingWord = GetFittingWordleWord(positionsThatMustBeCovered, correctWord, guessedWords);
+            guessedWords.Add(fittingWord);
             for (int j = 0; j < m_dimension; j++)
             {
                 Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
@@ -144,7 +124,7 @@ public class WordlePresenter : MonoBehaviour
         Profiler.EndSample();
     }
 
-    private string GetFittingWordleWord(bool[] positionsThatMustBeCovered, string correctWord)
+    private string GetFittingWordleWord(bool[] positionsThatMustBeCovered, string correctWord, List<string> guessedWords)
     {
         Profiler.BeginSample("GetFittingWordleWord");
         
@@ -153,7 +133,7 @@ public class WordlePresenter : MonoBehaviour
         {
             string wordToGuess = m_shuffledWords[i];
             if (wordToGuess == correctWord)
-                continue; // Word to guess can't be the same as the correct word, unless it's the last one!
+                continue; // Word to guess can't be the same as the correct word or one of the already guessed words!
             bool wordPasses = true;
             for (int j = 0; j < wordToGuess.Length; j++)
             {

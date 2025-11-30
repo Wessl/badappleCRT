@@ -38,6 +38,7 @@ public class WordleFrameHandler : MonoBehaviour
     
     private void Awake()
     {
+        Application.targetFrameRate = 60;
         # if UNITY_EDITOR
         m_platformVideoDelay = 0.125f;
         #elif UNITY_STANDALONE_WIN
@@ -92,7 +93,7 @@ public class WordleFrameHandler : MonoBehaviour
         Debug.Log(Resources.Load<TextAsset>("ascii"));
     }
 
-    void FixedUpdate()
+    void Update()
     {
         if (m_currFrame >= m_totalFrames)
         {
@@ -113,7 +114,6 @@ public class WordleFrameHandler : MonoBehaviour
 
     private void PresentFrame()
     {
-        Debug.Log("We are currently presenting frame number " + m_currFrame + " and it has been " + Time.time + " seconds.");
         if (dynamicallyLoadFrames && (m_currFrame >= (m_framesLoaded))) DynamicFrameLoad();
         int dim = m_presenter.Dimension;
        
