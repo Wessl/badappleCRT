@@ -40,10 +40,10 @@ public class EnglishDictionary : MonoBehaviour
                 if (!rawLineParts[0].All(c => char.IsLetterOrDigit(c)))
                     continue;
                 
-                if (m_wordDict.ContainsKey(rawLineParts[0]))
+                if (m_wordDict.ContainsKey(rawLineParts[0].ToUpper()))
                     continue; 
                 
-                m_wordDict.Add(rawLineParts[0], rawLineParts[2]);
+                m_wordDict.Add(rawLineParts[0].ToUpper(), rawLineParts[2]);
             }
         }
 

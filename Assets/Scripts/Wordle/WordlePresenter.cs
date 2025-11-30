@@ -23,7 +23,7 @@ public class WordlePresenter : MonoBehaviour
     private Dictionary<string, string> m_words;
     private List<string> m_keys;
 
-    private TextMeshProUGUI[,] m_grid;
+    private WordleSquare[,] m_grid;
     private Color m_wordleGreen = Color.clear;
     private Color m_wordleOrange = Color.clear;
     private Color m_wordleGrey = Color.clear;
@@ -36,7 +36,7 @@ public class WordlePresenter : MonoBehaviour
 
     void Start()
     {
-        m_grid = new TextMeshProUGUI[m_dimension+1, m_dimension];
+        m_grid = new WordleSquare[m_dimension+1, m_dimension];
         m_canvasGameObject = GetComponentInChildren<Canvas>().gameObject;
         m_words = FindFirstObjectByType<EnglishDictionary>().GetWordDict();
         m_keys = m_words.Keys.ToList();
@@ -46,6 +46,9 @@ public class WordlePresenter : MonoBehaviour
         ColorUtility.TryParseHtmlString("#538D4E",out m_wordleGreen);
         ColorUtility.TryParseHtmlString("#B59F3B",out m_wordleOrange);
         ColorUtility.TryParseHtmlString("#787C7E",out m_wordleGrey);
+        
+        // randomize order of word appearances - could do this more often if pattern is noticable?
+        Shuffle(m_keys);
         
         // set up grid?
         Rect canvasRect = m_canvasGameObject.GetComponent<RectTransform>().rect;
@@ -59,16 +62,25 @@ public class WordlePresenter : MonoBehaviour
         {
             for (int j = 0; j < m_grid.GetLength(1); j++)
             {
-                GameObject o = Instantiate(m_letterBox, new Vector3(x, y, 0), quaternion.identity);
-                o.transform.SetParent(m_canvasGameObject.transform, false);
+                GameObject go = Instantiate(m_letterBox, new Vector3(x, y, 0), quaternion.identity);
+                go.transform.SetParent(m_canvasGameObject.transform, false);
                 x += (int)letterBoxRect.width + m_gridSpacing;
                 
-                m_grid[i, j] = o.GetComponentInChildren<TextMeshProUGUI>();
-                m_grid[i, j].text = Random.Range(0, 9).ToString();
+                m_grid[i, j] = go.GetComponent<WordleSquare>();
             }
 
             x = startX;
             y -= (int)letterBoxRect.height + m_gridSpacing;
+        }
+    }
+    
+    public static void Shuffle<T>(IList<T> list)
+    {
+        int n = list.Count;
+        while (n > 1) {
+            n--;
+            int k = rng.Next(n + 1);
+            (list[k], list[n]) = (list[n], list[k]);
         }
     }
 
@@ -80,9 +92,7 @@ public class WordlePresenter : MonoBehaviour
         // then start making guesses against the "correct" word that is guaranteed to work with as many words as possible. 
         Profiler.BeginSample("GenerateWordleFrame");
         
-        m_shuffledWords = m_keys.OrderBy(_ => rng.Next()).Select(w => w.ToUpper()).ToList();
-        
-        string correctWord = m_shuffledWords[Random.Range(0, m_shuffledWords.Count - 1)];
+        string correctWord = m_keys[currentFrame % m_keys.Count];
         List<string> guessedWords = new List<string>();
         for (int i = 0; i <  m_grid.GetLength(0); i++)
         {
@@ -101,25 +111,24 @@ public class WordlePresenter : MonoBehaviour
             guessedWords.Add(fittingWord);
             for (int j = 0; j < m_dimension; j++)
             {
-                Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
                 if (i == m_dimension)
                 {
-                    m_grid[i, j].text = correctWord.ToString()[j].ToString();
-                    image.color = m_wordleGreen;
+                    m_grid[i, j].TMPro.text = correctWord[j].ToString();
+                    m_grid[i, j].Image.color = m_wordleGreen;
                     continue;
                 }
-                // todo - don't do GetComponent here, make a class that has both the text and Image accessible directly. 
-                m_grid[i, j].text = fittingWord[j].ToString();
+
+                m_grid[i, j].TMPro.text = fittingWord[j].ToString();
                 if (m_positionsThatMustBeCovered[j] && fittingWord[j] == correctWord[j])
                 {
-                    image.color = m_wordleGreen;
+                    m_grid[i, j].Image.color = m_wordleGreen;
                 } else if (m_positionsThatMustBeCovered[j])
                 {
-                    image.color = m_wordleOrange;
+                    m_grid[i, j].Image.color = m_wordleOrange;
                 }
                 else
                 {
-                    image.color = m_wordleGrey;
+                    m_grid[i, j].Image.color = m_wordleGrey;
                 }
             }
             
@@ -132,9 +141,9 @@ public class WordlePresenter : MonoBehaviour
         Profiler.BeginSample("GetFittingWordleWord");
         
         var correctChars = new HashSet<char>(correctWord); 
-        for (int i = 0; i < m_shuffledWords.Count; i++)
+        for (int i = 0; i < m_keys.Count; i++)
         {
-            string wordToGuess = m_shuffledWords[i];
+            string wordToGuess = m_keys[i];
             if (wordToGuess == correctWord)
                 continue; // Word to guess can't be the same as the correct word or one of the already guessed words!
             bool wordPasses = true;
@@ -142,7 +151,10 @@ public class WordlePresenter : MonoBehaviour
             {
                 if (positionsThatMustBeCovered[j])
                 {
-                    if (!correctChars.Contains(wordToGuess[j]))
+                    Profiler.BeginSample("Contains");
+                    bool contains = correctChars.Contains(wordToGuess[j]);
+                    Profiler.EndSample();
+                    if (!contains)
                     {
                         wordPasses = false;
                         break;
@@ -150,7 +162,10 @@ public class WordlePresenter : MonoBehaviour
                 }
                 else if(!positionsThatMustBeCovered[j])
                 {
-                    if (correctChars.Contains(wordToGuess[j]))
+                    Profiler.BeginSample("Contains");
+                    bool contains = correctChars.Contains(wordToGuess[j]);
+                    Profiler.EndSample();
+                    if (contains)
                     {
                         wordPasses = false;
                         break;
@@ -172,12 +187,11 @@ public class WordlePresenter : MonoBehaviour
 
     // just for testing
     HashSet<string> m_guessedWords = new HashSet<string>();
-    List<string> m_shuffledWords;
 
     public void CreateRandomWordleSetup(string word)
     {
         m_guessedWords.Clear();
-        m_shuffledWords = m_keys.OrderBy(_ => rng.Next()).ToList();
+        Shuffle(m_keys);
         
         bool[] correctPositions = new bool[m_dimension];
         for (int i = 0; i < m_dimension; i++)
@@ -189,7 +203,7 @@ public class WordlePresenter : MonoBehaviour
 
                 string guessedLetter = guessedWord[j].ToString().ToUpper();
                     
-                m_grid[i, j].text = guessedLetter;
+                m_grid[i, j].TMPro.text = guessedLetter;
                 Image image = m_grid[i, j].transform.parent.GetComponentInChildren<Image>();
                 if (correctLetter == guessedLetter)
                 {
@@ -222,9 +236,9 @@ public class WordlePresenter : MonoBehaviour
     {
         if (m_guessedWords.Contains(correctWord))
             return correctWord;
-        for (int i = 0; i < m_shuffledWords.Count; i++)
+        for (int i = 0; i < m_keys.Count; i++)
         {
-            string word = m_shuffledWords[i];
+            string word = m_keys[i];
             if (m_guessedWords.Contains(word))
                 continue;
             bool allCorrect = true;
