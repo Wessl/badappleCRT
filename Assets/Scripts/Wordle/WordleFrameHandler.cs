@@ -93,7 +93,7 @@ public class WordleFrameHandler : MonoBehaviour
         Debug.Log(Resources.Load<TextAsset>("ascii"));
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (m_currFrame >= m_totalFrames)
         {
@@ -109,6 +109,7 @@ public class WordleFrameHandler : MonoBehaviour
 
     void Finish()
     {
+        Debug.Log($"Amount of times 'no words found' was displayed: {m_presenter.GetNoWordsFoundCount}");
         m_isFinished = true;
     }
 

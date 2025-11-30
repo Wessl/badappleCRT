@@ -13,7 +13,7 @@ public class WordlePresenter : MonoBehaviour
 {
     public int Frames { get; set; }
     public int Dimension => m_dimension;
-    private int m_dimension = 8;
+    private int m_dimension = 10;
 
     private int m_gridSpacing = 10;
     
@@ -50,11 +50,10 @@ public class WordlePresenter : MonoBehaviour
         // randomize order of word appearances - could do this more often if pattern is noticable?
         Shuffle(m_keys);
         
-        // set up grid?
+        // set up grid
         Rect canvasRect = m_canvasGameObject.GetComponent<RectTransform>().rect;
         Rect letterBoxRect = m_letterBox.GetComponent<RectTransform>().rect;
         int startX = (int)(- letterBoxRect.width * m_dimension / 2 + m_gridSpacing);
-        Debug.Log($"startX: {startX}");
         int x = startX;
         int startY = (int)(letterBoxRect.height * m_dimension / 2 + letterBoxRect.height / 2 - m_gridSpacing);
         int y = startY;
@@ -136,6 +135,9 @@ public class WordlePresenter : MonoBehaviour
         Profiler.EndSample();
     }
 
+    private int m_noWordsFoundCount;
+    public int GetNoWordsFoundCount => m_noWordsFoundCount;
+
     private string GetFittingWordleWord(bool[] positionsThatMustBeCovered, string correctWord, List<string> guessedWords)
     {
         Profiler.BeginSample("GetFittingWordleWord");
@@ -143,44 +145,36 @@ public class WordlePresenter : MonoBehaviour
         var correctChars = new HashSet<char>(correctWord); 
         for (int i = 0; i < m_keys.Count; i++)
         {
-            string wordToGuess = m_keys[i];
-            if (wordToGuess == correctWord)
-                continue; // Word to guess can't be the same as the correct word or one of the already guessed words!
             bool wordPasses = true;
-            for (int j = 0; j < wordToGuess.Length; j++)
+            for (int j = 0; j < m_keys[i].Length; j++)
             {
                 if (positionsThatMustBeCovered[j])
                 {
-                    Profiler.BeginSample("Contains");
-                    bool contains = correctChars.Contains(wordToGuess[j]);
-                    Profiler.EndSample();
-                    if (!contains)
+                    if (!correctChars.Contains(m_keys[i][j]))
                     {
                         wordPasses = false;
                         break;
                     }
                 }
-                else if(!positionsThatMustBeCovered[j])
+                else
                 {
-                    Profiler.BeginSample("Contains");
-                    bool contains = correctChars.Contains(wordToGuess[j]);
-                    Profiler.EndSample();
-                    if (contains)
+                    if (correctChars.Contains(m_keys[i][j]))
                     {
                         wordPasses = false;
                         break;
                     }
                 }
             }
-
-            if (wordPasses)
+            
+            if (wordPasses && (m_keys[i] != correctWord))
             {
-                return wordToGuess;
+                return m_keys[i];
             }
         }
         
         Profiler.EndSample();
 
+        m_noWordsFoundCount++;
         return "NOWORDSFOUND";
     }
     
