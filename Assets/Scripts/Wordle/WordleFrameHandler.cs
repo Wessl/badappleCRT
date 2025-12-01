@@ -11,7 +11,7 @@ using Random = UnityEngine.Random;
 public class WordleFrameHandler : MonoBehaviour
 {
     private string m_pathToJpegs;
-    public Texture2D[] _jpegs;
+    private Texture2D m_jpeg;
 
     private int m_currFrame;
     public bool dynamicallyLoadFrames = true;
@@ -56,7 +56,7 @@ public class WordleFrameHandler : MonoBehaviour
         m_hasStartedPlayingVideo = false;
         m_isFinished = false;
         m_currFrame = 0;
-        if (dynamicallyLoadFrames) DynamicFrameLoad();
+        if (dynamicallyLoadFrames) LoadFrame(0);
         
         var fileAmount = TryFindFileAmount();
         m_totalFrames = fileAmount / 2;
@@ -93,7 +93,7 @@ public class WordleFrameHandler : MonoBehaviour
         Debug.Log(Resources.Load<TextAsset>("ascii"));
     }
 
-    void FixedUpdate()
+    void Update()
     {
         if (m_currFrame >= m_totalFrames)
         {
@@ -103,6 +103,10 @@ public class WordleFrameHandler : MonoBehaviour
             return;
         }
         if (!m_hasStartedPlayingVideo && CanStartPlayingVideo() == false) return;
+
+        m_currFrame = m_audio.timeSamples / 800; // 48khz source music / 800 = 60fps
+        
+        LoadFrame(m_currFrame);
         
         PresentFrame();
     }
@@ -115,12 +119,11 @@ public class WordleFrameHandler : MonoBehaviour
 
     private void PresentFrame()
     {
-        if (dynamicallyLoadFrames && (m_currFrame >= (m_framesLoaded))) DynamicFrameLoad();
         int dim = m_presenter.Dimension;
        
         Profiler.BeginSample("GetJpegTextureData");
-        var jpeg = _jpegs[m_currFrame + framesToLoadAhead - m_framesLoaded];
-        var pixels = jpeg.GetRawTextureData();
+        
+        var pixels = m_jpeg.GetRawTextureData();
         Profiler.EndSample();
         
         Profiler.BeginSample("SampleImageJob");
@@ -138,10 +141,7 @@ public class WordleFrameHandler : MonoBehaviour
         JobHandle jobHandle = job.Schedule(dim*dim, 512);
         jobHandle.Complete();
         Profiler.EndSample();
-        
-        m_currFrame++;
 
-        // m_presenter.CreateRandomWordleSetup(key);
         m_presenter.GenerateWordleFrame(modifiedPixelsNative, m_currFrame);
         pixelsNative.Dispose();
         
@@ -185,26 +185,18 @@ public class WordleFrameHandler : MonoBehaviour
     }
 
 
-    private void DynamicFrameLoad()
+    private void LoadFrame(int frameToLoad)
     {
-        Profiler.BeginSample("DynamicFrameLoad");
+        Profiler.BeginSample("LoadFrame");
         // Unload previous assets
-        foreach (var oldJpeg in _jpegs)
-        {
-            Resources.UnloadAsset(oldJpeg);
-        }
+        Resources.UnloadAsset(m_jpeg);
         
         // Load future assets
         string basePath = "frames/out-";
-        _jpegs = new Texture2D[framesToLoadAhead];
-        int frameToLoad = m_currFrame+1;
-        for (int i = 0; i < framesToLoadAhead; i++)
-        {
-            string nextPath = String.Concat(basePath, frameToLoad.ToString("D3"));
-            _jpegs[i] = Resources.Load<Texture2D>(nextPath);
-            frameToLoad++;
-            m_framesLoaded++;
-        }
+        string nextPath = String.Concat(basePath, frameToLoad.ToString("D3"));
+        m_jpeg = Resources.Load<Texture2D>(nextPath);
+        m_framesLoaded++;
+        
         Profiler.EndSample();
     }
 
@@ -213,29 +205,4 @@ public class WordleFrameHandler : MonoBehaviour
         Resources.UnloadUnusedAssets();
         GC.Collect();
     }
-
-    #if UNITY_EDITOR
-    void PreHandle()
-    {
-        for (int i = 0; i < _jpegs.Length; i++)
-        {
-            TextureImporter importer = (TextureImporter)TextureImporter.GetAtPath( AssetDatabase.GetAssetPath(_jpegs[i]) );
- 
-            importer.isReadable = true;
-            importer.textureType = TextureImporterType.Default;
-
-            importer.maxTextureSize = 1024;
-            importer.alphaIsTransparency = false;
-            importer.textureCompression = TextureImporterCompression.Compressed;
-            importer.crunchedCompression = true;
-            importer.compressionQuality = 50;
-            importer.mipmapEnabled = false;
-            importer.isReadable = true;
- 
-            EditorUtility.SetDirty(importer);
-            importer.SaveAndReimport();
-        }
-        
-    }
-    #endif
 }
