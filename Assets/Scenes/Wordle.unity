@@ -424,7 +424,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 366d4489b579e8941899a40e4271a19e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _jpegs: []
   dynamicallyLoadFrames: 1
   framesToLoadAhead: 1
   m_presenter: {fileID: 333064508}
@@ -479,7 +478,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.16981131, g: 0, b: 0.07621044, a: 0}
+  m_BackGroundColor: {r: 0.07058824, g: 0.07058824, b: 0.07450981, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
