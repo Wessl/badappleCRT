@@ -13,7 +13,7 @@ public class WordlePresenter : MonoBehaviour
 {
     public int Frames { get; set; }
     public int Dimension => m_dimension;
-    private int m_dimension = 10;
+    private int m_dimension = 8;
 
     private int m_gridSpacing = 10;
     
@@ -99,7 +99,7 @@ public class WordlePresenter : MonoBehaviour
             {
                 if (i != m_dimension)
                 {
-                    if (newPixels[newPixels.Length - 1 - (i * m_dimension + j)] < 0.5f)
+                    if (newPixels[(m_dimension - 1 - i) * m_dimension + j] > 0.5f)
                         m_positionsThatMustBeCovered[j] = true;
                     else
                         m_positionsThatMustBeCovered[j] = false;
@@ -177,6 +177,13 @@ public class WordlePresenter : MonoBehaviour
         m_noWordsFoundCount++;
         return "NOWORDSFOUND";
     }
+    
+    // some stats for nowordsfound: 
+    // 10 letters:  (12315), occurences
+    // 9 letters: (4174),
+    // 8: (1727)
+    
+    // 10 looks a lot better than 9. and 10 looks pretty bad. so that says a lot about 9 and 8. 
     
 
     // just for testing
