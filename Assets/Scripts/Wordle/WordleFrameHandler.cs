@@ -104,7 +104,7 @@ public class WordleFrameHandler : MonoBehaviour
         }
         if (!m_hasStartedPlayingVideo && CanStartPlayingVideo() == false) return;
 
-        m_currFrame = m_audio.timeSamples / 800; // 48khz source music / 800 = 60fps
+        m_currFrame = m_audio.timeSamples / (m_audio.clip.frequency / 60); 
         
         LoadFrame(m_currFrame);
         
