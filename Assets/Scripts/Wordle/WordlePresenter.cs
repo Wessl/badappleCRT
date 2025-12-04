@@ -140,17 +140,53 @@ public class WordlePresenter : MonoBehaviour
 
     private string GetFittingWordleWord(bool[] positionsThatMustBeCovered, string correctWord, List<string> guessedWords)
     {
+        if (positionsThatMustBeCovered.All(e => e))
+            return correctWord;
+        
         Profiler.BeginSample("GetFittingWordleWord");
+        Dictionary<char, int> numberOfTimesCharIsUsed = new();
         
         var correctChars = new HashSet<char>(correctWord); 
         for (int i = 0; i < m_keys.Count; i++)
         {
             bool wordPasses = true;
+            
+            numberOfTimesCharIsUsed.Clear();
+            foreach (var c in correctWord)
+            {
+                if (numberOfTimesCharIsUsed.ContainsKey(c))
+                    numberOfTimesCharIsUsed[c]++;
+                else
+                    numberOfTimesCharIsUsed.Add(c,1);
+            }
+            
+            // First check for greens. 
+            bool[] theseLettersAreAllGoodBoss = new bool[m_keys[i].Length];
             for (int j = 0; j < m_keys[i].Length; j++)
             {
+                if (positionsThatMustBeCovered[j] && correctWord[j] == m_keys[i][j])
+                {
+                    // Consume one. 
+                    numberOfTimesCharIsUsed[correctWord[j]]--;
+                    theseLettersAreAllGoodBoss[j] = true;
+                }
+            }
+            
+            for (int j = 0; j < m_keys[i].Length; j++)
+            {
+                if (theseLettersAreAllGoodBoss[j])
+                    continue;
+                
                 if (positionsThatMustBeCovered[j])
                 {
+                    int v = 1;
+                    numberOfTimesCharIsUsed.TryGetValue(m_keys[i][j], out v);
                     if (!correctChars.Contains(m_keys[i][j]))
+                    {
+                        wordPasses = false;
+                        break;
+                    }
+                    else if (v == 0)
                     {
                         wordPasses = false;
                         break;
@@ -158,15 +194,19 @@ public class WordlePresenter : MonoBehaviour
                 }
                 else
                 {
-                    if (correctChars.Contains(m_keys[i][j]))
+                    numberOfTimesCharIsUsed.TryGetValue(m_keys[i][j], out var v);
+                    if (correctChars.Contains(m_keys[i][j]) && v > 0)
                     {
                         wordPasses = false;
                         break;
                     }
                 }
+
+                if (numberOfTimesCharIsUsed.ContainsKey(m_keys[i][j]))
+                    numberOfTimesCharIsUsed[m_keys[i][j]]--;
             }
             
-            if (wordPasses && (m_keys[i] != correctWord))
+            if (wordPasses)
             {
                 return m_keys[i];
             }
@@ -175,7 +215,7 @@ public class WordlePresenter : MonoBehaviour
         Profiler.EndSample();
 
         m_noWordsFoundCount++;
-        return "NOWORDSFOUND";
+        return "NOWORD:(";
     }
     
     // some stats for nowordsfound: 
